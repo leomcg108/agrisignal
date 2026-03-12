@@ -1,0 +1,156 @@
+version: "3.9"
+
+# ════════════════════════════════════════════════════════════════
+# AgriSignal — Full Stack
+#
+# Services:
+#   api        - FastAPI prediction server         :8000
+#   pipeline   - One-shot pipeline runner
+#   prefect    - Prefect 2 orchestration server    :4200
+#   mlflow     - Experiment tracking UI            :5000
+#   postgres   - Shared backend DB
+#   prometheus - Metrics collection               :9090
+#   grafana    - Metrics dashboard                :3000
+#
+# Usage:
+#   docker-compose up --build           # Start all
+#   docker-compose run pipeline         # Run pipeline once
+#   docker-compose up api mlflow        # API + tracking only
+# ════════════════════════════════════════════════════════════════
+
+x-env: &common-env
+  NOAA_API_TOKEN: ${NOAA_API_TOKEN:?Set NOAA_API_TOKEN in .env}
+  MLFLOW_TRACKING_URI: http://mlflow:5000
+  PREFECT_API_URL: http://prefect:4200/api
+  PYTHONUNBUFFERED: "1"
+
+services:
+
+  # ── Shared Postgres (MLflow + Prefect backend) ──────────────
+  postgres:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_USER: agrisignal
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-agri_secret}
+      POSTGRES_MULTIPLE_DATABASES: mlflow,prefect
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./scripts/init_dbs.sh:/docker-entrypoint-initdb.d/init_dbs.sh:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U agrisignal"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks: [agrisignal]
+
+  # ── MLflow Tracking Server ──────────────────────────────────
+  mlflow:
+    image: ghcr.io/mlflow/mlflow:v2.10.0
+    command: >
+      mlflow server
+        --backend-store-uri postgresql://agrisignal:${POSTGRES_PASSWORD:-agri_secret}@postgres:5432/mlflow
+        --default-artifact-root /mlflow/artifacts
+        --host 0.0.0.0 --port 5000
+    volumes:
+      - mlflow_artifacts:/mlflow/artifacts
+    ports: ["5000:5000"]
+    depends_on:
+      postgres: { condition: service_healthy }
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks: [agrisignal]
+
+  # ── Prefect 2 Orchestration Server ─────────────────────────
+  prefect:
+    image: prefecthq/prefect:2-python3.11
+    command: prefect server start --host 0.0.0.0
+    environment:
+      PREFECT_SERVER_DATABASE_CONNECTION_URL: >
+        postgresql+asyncpg://agrisignal:${POSTGRES_PASSWORD:-agri_secret}@postgres:5432/prefect
+    volumes:
+      - prefect_data:/root/.prefect
+    ports: ["4200:4200"]
+    depends_on:
+      postgres: { condition: service_healthy }
+    networks: [agrisignal]
+
+  # ── Pipeline Runner (one-shot) ──────────────────────────────
+  pipeline:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    command: python -m orchestration.flows.daily_pipeline
+    environment:
+      <<: *common-env
+    volumes:
+      - pipeline_data:/app/data
+    depends_on:
+      mlflow: { condition: service_healthy }
+    networks: [agrisignal]
+    profiles: [training]   # docker-compose --profile training up pipeline
+
+  # ── FastAPI Prediction Server ───────────────────────────────
+  api:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    command: >
+      uvicorn agrisignal.serving.api:app
+        --host 0.0.0.0 --port 8000 --workers 2
+    environment:
+      <<: *common-env
+    ports: ["8000:8000"]
+    volumes:
+      - pipeline_data:/app/data:ro
+    depends_on:
+      mlflow: { condition: service_healthy }
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      start_period: 60s
+      retries: 3
+    restart: unless-stopped
+    networks: [agrisignal]
+
+  # ── Prometheus Metrics ──────────────────────────────────────
+  prometheus:
+    image: prom/prometheus:v2.48.0
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.path=/prometheus
+      - --web.enable-lifecycle
+    volumes:
+      - ./configs/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    ports: ["9090:9090"]
+    networks: [agrisignal]
+    profiles: [monitoring]
+
+  # ── Grafana Dashboards ──────────────────────────────────────
+  grafana:
+    image: grafana/grafana:10.2.0
+    environment:
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_PASSWORD:-admin}
+      GF_USERS_ALLOW_SIGN_UP: "false"
+    volumes:
+      - grafana_data:/var/lib/grafana
+    ports: ["3000:3000"]
+    depends_on: [prometheus]
+    networks: [agrisignal]
+    profiles: [monitoring]
+
+volumes:
+  postgres_data:
+  mlflow_artifacts:
+  prefect_data:
+  pipeline_data:
+  prometheus_data:
+  grafana_data:
+
+networks:
+  agrisignal:
+    driver: bridge

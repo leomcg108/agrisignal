@@ -1,0 +1,124 @@
+# ================================================================
+# AgriSignal — Master Configuration
+# All pipeline parameters live here.
+# ================================================================
+
+pipeline:
+  name: "agrisignal-corn-futures"
+  commodity: "corn"
+  lookback_years: 5
+
+# ── Storage paths (Medallion architecture) ──────────────────────
+storage:
+  bronze: "data/bronze"
+  silver: "data/silver"
+  gold:   "data/gold"
+  models: "data/models"
+
+# ── Data Sources ─────────────────────────────────────────────────
+sources:
+
+  weather:
+    # NOAA GHCN-Daily stations in the US Corn Belt
+    Token: "YOUR_TOKEN_HERE" # get token at https://www.ncdc.noaa.gov/cdo-web/token
+    base_url: "https://www.ncdc.noaa.gov/cdo-web/api/v2/data"
+    dataset: "GHCND"
+    datatypes: ["TMAX", "TMIN", "PRCP", "SNOW"]
+    stations:
+      des_moines_ia:  "USW00014933"
+      peoria_il:      "USW00094846"
+      indianapolis_in: "USW00093819"
+      omaha_ne:        "USW00014942"
+      columbus_oh:     "USW00014820"
+    # Rate limits: 5 req/s, 10k/day
+    rate_limit_sleep_s: 0.25
+    timeout_s: 30
+    max_retries: 3
+
+  futures:
+    ticker: "ZC=F"        # CBOT Corn Continuous Front Month
+    correlated:
+      wheat:  "ZW=F"      # Wheat (substitute crop)
+      crude:  "CL=F"      # Crude oil (ethanol demand proxy)
+      usd:    "DX-Y.NYB"  # USD Index (export demand)
+
+# ── Transform / Silver Layer ─────────────────────────────────────
+transforms:
+  # Max allowed null rate before raising DataQualityError
+  max_null_rate: 0.05
+  # Weather stations must cover this fraction of days
+  min_station_coverage: 0.80
+  # Futures: drop rows where volume is suspiciously low
+  min_daily_volume: 2000
+
+# ── Feature Engineering / Gold Layer ─────────────────────────────
+features:
+  # Corn agronomic constants
+  gdd_base_temp_f: 50     # Growing Degree Day base (°F)
+  gdd_heat_stress_f: 95   # Daily max temp that damages pollination
+
+  # Rolling windows (trading days)
+  rolling_windows: [5, 10, 20, 60]
+
+  # Technical indicator params
+  rsi_period: 14
+  macd_fast: 12
+  macd_slow: 26
+  macd_signal: 9
+  bb_period: 20
+  atr_period: 14
+
+  # Prediction target
+  target_horizon_days: 5
+  target_type: "return"   # "return" | "direction" | "price"
+
+# ── Model Training ────────────────────────────────────────────────
+model:
+  type: "xgboost"
+  params:
+    n_estimators: 600
+    max_depth: 5
+    learning_rate: 0.04
+    subsample: 0.80
+    colsample_bytree: 0.75
+    min_child_weight: 5
+    reg_alpha: 0.1
+    reg_lambda: 1.0
+    early_stopping_rounds: 50
+    eval_metric: "rmse"
+    tree_method: "hist"   # Fast training
+    random_state: 42
+
+  # Walk-forward validation
+  n_cv_splits: 5
+  test_size: 0.15         
+  gap_days: 5             # Days between train end and val start (leakage guard)
+
+# ── MLflow ───────────────────────────────────────────────────────
+mlflow:
+  tracking_uri: "./mlruns" # "http://mlflow:5000" # use "./mlruns" for quick local testing
+  experiment_name: "corn-futures-xgboost"
+  registered_model_name: "agrisignal-corn"
+
+# ── API Serving ───────────────────────────────────────────────────
+api:
+  host: "0.0.0.0"
+  port: 8000
+  workers: 2
+  cache_predictions_ttl_s: 300   # Cache result 5 min (price not tick data)
+
+# ── Orchestration (Prefect) ───────────────────────────────────────
+orchestration:
+  schedule_cron: "0 7 * * 1-5"   # 7am UTC, weekdays (after futures open)
+  retrain_on_days: ["monday"]     # Weekly retrain after USDA Monday reports
+  alert_on_failure: true
+
+# ── Monitoring ────────────────────────────────────────────────────
+monitoring:
+  # PSI thresholds for feature drift detection
+  psi_warning: 0.10
+  psi_critical: 0.20
+  # Alert if daily row count drops below this fraction of expected
+  min_row_fraction: 0.80
+  # Prometheus metrics port
+  metrics_port: 9090

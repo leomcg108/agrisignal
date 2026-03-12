@@ -1,0 +1,71 @@
+name: AgriSignal CI
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main]
+
+jobs:
+  quality:
+    name: Lint & Test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v4
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Lint (ruff)
+        run: ruff check . --ignore E501,E402
+
+      - name: Format check (black)
+        run: black --check . --line-length 100
+
+      - name: Run unit tests
+        run: |
+          pytest tests/ -v \
+            --tb=short \
+            -k "not integration" \
+            --junitxml=test-results.xml \
+            --cov=agrisignal \
+            --cov-report=xml
+
+      - name: Upload coverage
+        uses: codecov/codecov-action@v3
+        with:
+          file: coverage.xml
+
+      - name: Upload test results
+        uses: actions/upload-artifact@v3
+        if: always()
+        with:
+          name: test-results
+          path: test-results.xml
+
+  docker:
+    name: Docker Build
+    runs-on: ubuntu-latest
+    needs: quality
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build image
+        run: docker build -f docker/Dockerfile -t agrisignal:${{ github.sha }} .
+
+      - name: Verify import
+        run: |
+          docker run --rm agrisignal:${{ github.sha }} \
+            python -c "from agrisignal.utils import load_config; print('OK')"
+
+      - name: Tag and push (main only)
+        if: github.ref == 'refs/heads/main'
+        run: |
+          echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+          docker tag agrisignal:${{ github.sha }} ghcr.io/${{ github.repository }}:latest
+          docker push ghcr.io/${{ github.repository }}:latest
