@@ -12,6 +12,7 @@ data/models/
 
 # Secrets
 .env
+.env.*
 
 # MLflow local runs
 mlruns/
@@ -27,6 +28,7 @@ test-results.xml
 
 # IDE
 .vscode/
+*.code-workspace
 .idea/
 *.swp
 
