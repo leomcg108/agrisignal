@@ -4,15 +4,25 @@
 > end-to-end pipeline design for agricultural commodities price prediction.
 
 
+
 | **Medallion architecture** | Bronze → Silver → Gold Parquet layers |
+
 | **Schema contracts** | Pandera validation at every layer boundary |
+
 | **Idempotent ingestion** | Partition-aware, safe to re-run any date range |
+
 | **Orchestration** | Prefect 2 flows with retries, caching, alerting |
+
 | **Containerization** | Multi-stage Docker + docker-compose full stack |
+
 | **Observability** | Structured logging, data quality metrics, Prometheus |
+
 | **Testing** | Unit tests + great_expectations data quality suite |
+
 | **CI/CD** | GitHub Actions: lint → test → docker build |
+
 | **Config-driven** | Zero hardcoded values; YAML + env vars |
+
 
 ## Architecture
 
