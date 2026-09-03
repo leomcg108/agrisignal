@@ -24,7 +24,6 @@ import pandas as pd
 from agrisignal.transforms.schemas import GoldSchema, validate
 from agrisignal.utils import ParquetStore, get_logger, load_config
 
-
 log = get_logger(__name__)
 
 
@@ -52,7 +51,9 @@ class FeatureEngineer:
             df[f"return_{w}d"] = close.pct_change(w)
             df[f"sma_{w}"] = close.rolling(w).mean()
             df[f"ema_{w}"] = close.ewm(span=w, adjust=False).mean()
-            df[f"price_to_sma_{w}"] = close / df[f"sma_{w}"] - 1 # Price vs. SMA (Mean Reversion Signal)
+            df[f"price_to_sma_{w}"] = (
+                close / df[f"sma_{w}"] - 1
+            )  # Price vs. SMA (Mean Reversion Signal)
 
         df["high_low_range"] = (df["high"] - df["low"]) / close
         df["overnight_gap"] = (df["open"] - df["close"].shift(1)) / df["close"].shift(1)
@@ -77,7 +78,11 @@ class FeatureEngineer:
         df["rsi"] = 100 - (100 / (1 + up / dn.replace(0, np.nan)))
 
         # MACD
-        fast, slow, sig = self.f_cfg["macd_fast"], self.f_cfg["macd_slow"], self.f_cfg["macd_signal"]
+        fast, slow, sig = (
+            self.f_cfg["macd_fast"],
+            self.f_cfg["macd_slow"],
+            self.f_cfg["macd_signal"],
+        )
         ema_f = close.ewm(span=fast, adjust=False).mean()
         ema_s = close.ewm(span=slow, adjust=False).mean()
         df["macd"] = ema_f - ema_s
@@ -97,11 +102,14 @@ class FeatureEngineer:
 
         # ATR (Average True Range)
         atr_p = self.f_cfg["atr_period"]
-        tr = pd.concat([
-            high - low,
-            (high - close.shift(1)).abs(),
-            (low - close.shift(1)).abs(),
-        ], axis=1).max(axis=1)
+        tr = pd.concat(
+            [
+                high - low,
+                (high - close.shift(1)).abs(),
+                (low - close.shift(1)).abs(),
+            ],
+            axis=1,
+        ).max(axis=1)
         df["atr"] = tr.rolling(atr_p).mean()
         df["atr_pct"] = df["atr"] / close
 
@@ -149,9 +157,8 @@ class FeatureEngineer:
         df["gdd_daily"] = (avg_temp - base).clip(lower=0)
 
         # Cumulative GDD since April 1 of each year (corn development proxy)
-        df["gdd_cumulative"] = (
-            df.groupby(df["date"].dt.year)["gdd_daily"]
-            .transform(lambda s: s.cumsum())
+        df["gdd_cumulative"] = df.groupby(df["date"].dt.year)["gdd_daily"].transform(
+            lambda s: s.cumsum()
         )
 
         # Heat stress accumulation
@@ -183,16 +190,16 @@ class FeatureEngineer:
         # Cyclical encoding — avoids Dec/Jan discontinuity
         df["month_sin"] = np.sin(2 * np.pi * dt.dt.month / 12)
         df["month_cos"] = np.cos(2 * np.pi * dt.dt.month / 12)
-        df["doy_sin"]   = np.sin(2 * np.pi * dt.dt.dayofyear / 365)
-        df["doy_cos"]   = np.cos(2 * np.pi * dt.dt.dayofyear / 365)
-        df["week_sin"]  = np.sin(2 * np.pi * dt.dt.isocalendar().week.astype(int) / 52)
-        df["week_cos"]  = np.cos(2 * np.pi * dt.dt.isocalendar().week.astype(int) / 52)
+        df["doy_sin"] = np.sin(2 * np.pi * dt.dt.dayofyear / 365)
+        df["doy_cos"] = np.cos(2 * np.pi * dt.dt.dayofyear / 365)
+        df["week_sin"] = np.sin(2 * np.pi * dt.dt.isocalendar().week.astype(int) / 52)
+        df["week_cos"] = np.cos(2 * np.pi * dt.dt.isocalendar().week.astype(int) / 52)
 
         # Corn crop calendar flags (key price-moving periods)
         month = dt.dt.month
-        df["is_planting"]      = month.isin([4, 5]).astype(int)        # Apr–May
-        df["is_pollination"]   = month.isin([7]).astype(int)            # July (critical)
-        df["is_harvest"]       = month.isin([9, 10, 11]).astype(int)    # Sep–Nov
+        df["is_planting"] = month.isin([4, 5]).astype(int)  # Apr–May
+        df["is_pollination"] = month.isin([7]).astype(int)  # July (critical)
+        df["is_harvest"] = month.isin([9, 10, 11]).astype(int)  # Sep–Nov
         df["is_growing_season"] = month.between(4, 10).astype(int)
 
         # WASDE proximity (World Ag Supply/Demand released ~10th each month)
@@ -215,14 +222,16 @@ class FeatureEngineer:
 
         if "crude_close" in df.columns:
             df["corn_crude_corr_20d"] = (
-                df["log_return_1d"].rolling(20)
+                df["log_return_1d"]
+                .rolling(20)
                 .corr(np.log(df["crude_close"] / df["crude_close"].shift(1)))
             )
 
         if "usd_close" in df.columns:
             df["usd_return_5d"] = df["usd_close"].pct_change(5)
             df["corn_usd_corr_20d"] = (
-                df["log_return_1d"].rolling(20)
+                df["log_return_1d"]
+                .rolling(20)
                 .corr(np.log(df["usd_close"] / df["usd_close"].shift(1)))
             )
 
@@ -271,19 +280,25 @@ class FeatureEngineer:
 
         # Store feature names (exclude metadata and target cols)
         _exclude = {
-            "date", "target", "target_horizon",
-            "open", "high", "low", "close", "volume",
+            "date",
+            "target",
+            "target_horizon",
+            "open",
+            "high",
+            "low",
+            "close",
+            "volume",
         }
         self._feature_names = [
-            c for c in df.columns
+            c
+            for c in df.columns
             if c not in _exclude
             and df[c].dtype in (np.float64, np.float32, np.int64, np.int32, float, int)
         ]
 
         path = self.gold_store.write(df, "gold_features")
         log.info(
-            f"Gold complete: {len(df):,} rows | "
-            f"{len(self._feature_names)} features | {path}"
+            f"Gold complete: {len(df):,} rows | " f"{len(self._feature_names)} features | {path}"
         )
 
         return df

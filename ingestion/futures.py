@@ -20,7 +20,6 @@ import yfinance as yf
 
 from agrisignal.utils import ParquetStore, get_logger, load_config
 
-
 log = get_logger(__name__)
 
 
@@ -104,7 +103,7 @@ class FuturesIngester:
 
         written: list[Path] = []
         tickers = {
-            "corn":  self.src_cfg["ticker"],
+            "corn": self.src_cfg["ticker"],
             **self.src_cfg.get("correlated", {}),
         }
 

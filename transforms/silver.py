@@ -26,7 +26,6 @@ import pandas as pd
 from agrisignal.transforms.schemas import DataContractError, SilverSchema, validate
 from agrisignal.utils import ParquetStore, get_logger, load_config
 
-
 log = get_logger(__name__)
 
 
@@ -72,24 +71,22 @@ class SilverTransform:
             pivoted["tmax_f"] = (pivoted["TMAX"] / 10) * 9 / 5 + 32
             pivoted["tmin_f"] = (pivoted["TMIN"] / 10) * 9 / 5 + 32
         if "PRCP" in pivoted.columns:
-            pivoted["prcp_in"] = pivoted["PRCP"] / 10 / 25.4   # tenths-mm → inches
+            pivoted["prcp_in"] = pivoted["PRCP"] / 10 / 25.4  # tenths-mm → inches
         if "SNOW" in pivoted.columns:
             pivoted["snow_mm"] = pivoted["SNOW"] / 10
 
         # Average across Corn Belt stations for each day
         weather_cols = ["tmax_f", "tmin_f", "prcp_in", "snow_mm"]
         present_cols = [c for c in weather_cols if c in pivoted.columns]
-        agg = (
-            pivoted.groupby("date")[present_cols]
-            .mean()
-            .reset_index()
-        )
+        agg = pivoted.groupby("date")[present_cols].mean().reset_index()
 
         # Data quality check: warn if coverage is sparse
         null_rates = agg[present_cols].isna().mean()
         for col, rate in null_rates.items():
             if rate > self.t_cfg["max_null_rate"]:
-                log.warning(f"Weather column {col}: {rate:.1%} nulls (threshold {self.t_cfg['max_null_rate']:.0%})")
+                log.warning(
+                    f"Weather column {col}: {rate:.1%} nulls (threshold {self.t_cfg['max_null_rate']:.0%})"
+                )
 
         log.info(f"Weather silver: {len(agg):,} daily records")
         return agg
@@ -127,7 +124,19 @@ class SilverTransform:
         )
         df["high_low_pct"] = (df["high"] - df["low"]) / df["close"]
 
-        return df[["date", "open", "high", "low", "close", "volume", "returns_1d", "log_return_1d", "high_low_pct"]]
+        return df[
+            [
+                "date",
+                "open",
+                "high",
+                "low",
+                "close",
+                "volume",
+                "returns_1d",
+                "log_return_1d",
+                "high_low_pct",
+            ]
+        ]
 
     def _clean_correlated(
         self,

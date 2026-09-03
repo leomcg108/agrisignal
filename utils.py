@@ -21,17 +21,17 @@ from typing import Any, Callable
 import pandas as pd
 import yaml
 
-
 # ─────────────────────────────────────────────────────────────────
 # Config
 # ─────────────────────────────────────────────────────────────────
 
 _CFG_CACHE: dict = {}
 
+
 def load_config(path: str | None = None) -> dict:
     """
     Load YAML config from multiple possible locations.
-    
+
     Search order:
     1. Explicit path argument
     2. AGRISIGNAL_CONFIG environment variable
@@ -40,7 +40,7 @@ def load_config(path: str | None = None) -> dict:
     5. {project_root}/configs/config.yaml (package location)
     """
     global _CFG_CACHE
-    
+
     if path is None:
         # Explicit path provided
         candidates = [Path(path)]
@@ -52,38 +52,38 @@ def load_config(path: str | None = None) -> dict:
         # env_path = os.getenv("AGRISIGNAL_CONFIG")
         # if env_path:
         #     candidates.append(Path(env_path))
-        
+
         # Current directory
-        candidates.append(Path.cwd() / "agrisignal" / "configs" / "config.yaml")        
-        
+        candidates.append(Path.cwd() / "agrisignal" / "configs" / "config.yaml")
+
         # Current directory
         candidates.append(Path.cwd() / "configs" / "config.yaml")
-        
+
         # Parent directory (in case running from agrisignal/ subdirectory)
         candidates.append(Path.cwd().parent / "configs" / "config.yaml")
-        
+
         # Project root (relative to this file)
         utils_dir = Path(__file__).parent
         project_root = utils_dir.parent
         candidates.append(project_root / "configs" / "config.yaml")
-        
+
     # Try each candidate
     for candidate in candidates:
         path_str = str(candidate)
-        
+
         # Check cache first
         if path_str in _CFG_CACHE:
             return _CFG_CACHE[path_str]
-        
+
         # Check if file exists
         if candidate.exists():
             with open(candidate) as f:
                 cfg = yaml.safe_load(f)
             _CFG_CACHE[path_str] = cfg
             return cfg
-    
+
     # No config found anywhere
-    tried = '\n  '.join(str(c.absolute()) for c in candidates)
+    tried = "\n  ".join(str(c.absolute()) for c in candidates)
     raise FileNotFoundError(
         f"Config file not found. Tried:\n  {tried}\n\n"
         f"Current directory: {Path.cwd()}\n"
@@ -106,6 +106,7 @@ def cfg_get(cfg: dict, *keys: str, default: Any = None) -> Any:
 # ─────────────────────────────────────────────────────────────────
 # Structured Logging
 # ─────────────────────────────────────────────────────────────────
+
 
 def get_logger(name: str, level: str = "INFO") -> logging.Logger:
     """
@@ -132,6 +133,7 @@ def get_logger(name: str, level: str = "INFO") -> logging.Logger:
 # Retry decorator
 # ─────────────────────────────────────────────────────────────────
 
+
 def retry(
     max_attempts: int = 3,
     backoff_base: float = 2.0,
@@ -144,6 +146,7 @@ def retry(
         @retry(max_attempts=3, exceptions=(requests.RequestException,))
         def fetch_noaa_data(...): ...
     """
+
     def decorator(func: Callable) -> Callable:
         @functools.wraps(func)
         def wrapper(*args, **kwargs):
@@ -155,19 +158,22 @@ def retry(
                     if attempt == max_attempts:
                         log.error(f"{func.__name__} failed after {max_attempts} attempts: {exc}")
                         raise
-                    wait = backoff_base ** attempt
+                    wait = backoff_base**attempt
                     log.warning(
                         f"{func.__name__} attempt {attempt}/{max_attempts} failed: {exc}. "
                         f"Retrying in {wait:.1f}s..."
                     )
                     time.sleep(wait)
+
         return wrapper
+
     return decorator
 
 
 # ─────────────────────────────────────────────────────────────────
 # Parquet Storage Helpers
 # ─────────────────────────────────────────────────────────────────
+
 
 class ParquetStore:
     """
@@ -253,11 +259,13 @@ class ParquetStore:
         source_dir = self.base / source
         if not source_dir.exists():
             return []
-        return sorted([
-            d.name.replace("ingest_date=", "")
-            for d in source_dir.iterdir()
-            if d.is_dir() and d.name.startswith("ingest_date=")
-        ])
+        return sorted(
+            [
+                d.name.replace("ingest_date=", "")
+                for d in source_dir.iterdir()
+                if d.is_dir() and d.name.startswith("ingest_date=")
+            ]
+        )
 
     # ── Silver / Gold (single file) ────────────────────────────────
 
@@ -290,9 +298,12 @@ class ParquetStore:
             "rows": len(df),
             "columns": list(df.columns),
             "size_mb": round(path.stat().st_size / 1e6, 2),
-            "date_range": {
-                "min": str(df.get("date", df.iloc[:, 0]).min()),
-                "max": str(df.get("date", df.iloc[:, 0]).max()),
-            } if len(df) > 0 else {},
+            "date_range": (
+                {
+                    "min": str(df.get("date", df.iloc[:, 0]).min()),
+                    "max": str(df.get("date", df.iloc[:, 0]).max()),
+                }
+                if len(df) > 0
+                else {}
+            ),
         }
-

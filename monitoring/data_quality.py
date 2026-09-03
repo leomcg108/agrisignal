@@ -17,7 +17,6 @@ import pandas as pd
 
 from agrisignal.utils import get_logger, load_config
 
-
 log = get_logger(__name__)
 
 
@@ -128,7 +127,8 @@ def run_quality_checks(
 
     # ── Check 5: Feature null rate ────────────────────────────────
     feature_cols = [
-        c for c in df.columns
+        c
+        for c in df.columns
         if c not in ("date", "target", "target_horizon", "open", "high", "low", "close", "volume")
         and df[c].dtype in (float, np.float64, int, np.int64)
     ]

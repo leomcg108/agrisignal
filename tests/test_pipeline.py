@@ -23,6 +23,7 @@ import pytest
 # Fixtures — shared synthetic data
 # ─────────────────────────────────────────────────────────────────
 
+
 @pytest.fixture(scope="module")
 def sample_silver_df():
     """
@@ -34,25 +35,27 @@ def sample_silver_df():
     dates = pd.bdate_range(end=date.today(), periods=n)  # Business days only
     prices = 450.0 + np.cumsum(np.random.randn(n) * 3.5)
 
-    df = pd.DataFrame({
-        "date":          pd.to_datetime(dates),
-        "open":          prices + np.random.randn(n) * 0.5,
-        "high":          prices + np.abs(np.random.randn(n)) * 2.5,
-        "low":           prices - np.abs(np.random.randn(n)) * 2.5,
-        "close":         prices,
-        "volume":        np.random.randint(60_000, 200_000, n).astype(float),
-        "returns_1d":    np.concatenate([[np.nan], np.diff(prices) / prices[:-1]]),
-        "log_return_1d": np.concatenate([[np.nan], np.log(prices[1:] / prices[:-1])]),
-        "high_low_pct":  np.abs(np.random.randn(n)) * 0.02,
-        "day_of_week":   pd.to_datetime(dates).dayofweek,
-        "month":         pd.to_datetime(dates).month,
-        "tmax_f":        65 + 20 * np.sin(2 * np.pi * np.arange(n) / 252) + np.random.randn(n) * 5,
-        "tmin_f":        45 + 18 * np.sin(2 * np.pi * np.arange(n) / 252) + np.random.randn(n) * 4,
-        "prcp_in":       np.abs(np.random.randn(n) * 0.08),
-        "wheat_close":   350 + np.cumsum(np.random.randn(n) * 2),
-        "crude_close":   80 + np.cumsum(np.random.randn(n) * 1),
-        "usd_close":     103 + np.cumsum(np.random.randn(n) * 0.3),
-    })
+    df = pd.DataFrame(
+        {
+            "date": pd.to_datetime(dates),
+            "open": prices + np.random.randn(n) * 0.5,
+            "high": prices + np.abs(np.random.randn(n)) * 2.5,
+            "low": prices - np.abs(np.random.randn(n)) * 2.5,
+            "close": prices,
+            "volume": np.random.randint(60_000, 200_000, n).astype(float),
+            "returns_1d": np.concatenate([[np.nan], np.diff(prices) / prices[:-1]]),
+            "log_return_1d": np.concatenate([[np.nan], np.log(prices[1:] / prices[:-1])]),
+            "high_low_pct": np.abs(np.random.randn(n)) * 0.02,
+            "day_of_week": pd.to_datetime(dates).dayofweek,
+            "month": pd.to_datetime(dates).month,
+            "tmax_f": 65 + 20 * np.sin(2 * np.pi * np.arange(n) / 252) + np.random.randn(n) * 5,
+            "tmin_f": 45 + 18 * np.sin(2 * np.pi * np.arange(n) / 252) + np.random.randn(n) * 4,
+            "prcp_in": np.abs(np.random.randn(n) * 0.08),
+            "wheat_close": 350 + np.cumsum(np.random.randn(n) * 2),
+            "crude_close": 80 + np.cumsum(np.random.randn(n) * 1),
+            "usd_close": 103 + np.cumsum(np.random.randn(n) * 0.3),
+        }
+    )
     return df
 
 
@@ -61,6 +64,7 @@ def sample_gold_df(sample_silver_df):
     """Build gold feature matrix from synthetic silver."""
     import sys
     from pathlib import Path
+
     sys.path.insert(0, str(Path(__file__).parent.parent))
 
     import yaml
@@ -70,29 +74,45 @@ def sample_gold_df(sample_silver_df):
         "storage": {
             "bronze": "/tmp/agri_test/bronze",
             "silver": "/tmp/agri_test/silver",
-            "gold":   "/tmp/agri_test/gold",
+            "gold": "/tmp/agri_test/gold",
             "models": "/tmp/agri_test/models",
         },
         "sources": {"weather": {"stations": {}}, "futures": {"ticker": "ZC=F", "correlated": {}}},
-        "transforms": {"max_null_rate": 0.05, "min_station_coverage": 0.8, "min_daily_volume": 5000},
+        "transforms": {
+            "max_null_rate": 0.05,
+            "min_station_coverage": 0.8,
+            "min_daily_volume": 5000,
+        },
         "features": {
-            "gdd_base_temp_f": 50, "gdd_heat_stress_f": 95,
+            "gdd_base_temp_f": 50,
+            "gdd_heat_stress_f": 95,
             "rolling_windows": [5, 10, 20, 60],
-            "rsi_period": 14, "macd_fast": 12, "macd_slow": 26, "macd_signal": 9,
-            "bb_period": 20, "atr_period": 14,
-            "target_horizon_days": 5, "target_type": "return",
+            "rsi_period": 14,
+            "macd_fast": 12,
+            "macd_slow": 26,
+            "macd_signal": 9,
+            "bb_period": 20,
+            "atr_period": 14,
+            "target_horizon_days": 5,
+            "target_type": "return",
         },
         "model": {"params": {}, "test_size": 0.15, "n_cv_splits": 3, "gap_days": 5},
         "mlflow": {"tracking_uri": "sqlite:///test_mlflow.db", "experiment_name": "test"},
         "api": {"host": "0.0.0.0", "port": 8000, "workers": 1, "cache_predictions_ttl_s": 60},
         "orchestration": {},
-        "monitoring": {"psi_warning": 0.1, "psi_critical": 0.2, "min_row_fraction": 0.8, "metrics_port": 9090},
+        "monitoring": {
+            "psi_warning": 0.1,
+            "psi_critical": 0.2,
+            "min_row_fraction": 0.8,
+            "metrics_port": 9090,
+        },
     }
     cfg_path = "/tmp/test_config.yaml"
     with open(cfg_path, "w") as f:
         yaml.dump(test_cfg, f)
 
     from agrisignal.features.engineer import FeatureEngineer
+
     eng = FeatureEngineer(config_path=cfg_path)
     return eng.build(sample_silver_df)
 
@@ -101,17 +121,20 @@ def sample_gold_df(sample_silver_df):
 # Schema Tests
 # ═════════════════════════════════════════════════════════════════
 
+
 class TestSchemas:
 
     def test_silver_schema_validates_good_data(self, sample_silver_df):
         """Valid silver data should pass schema without errors."""
         from agrisignal.transforms.schemas import SilverSchema, validate
+
         result = validate(sample_silver_df, SilverSchema, layer="test")
         assert len(result) == len(sample_silver_df)
 
     def test_silver_schema_rejects_negative_close(self, sample_silver_df):
         """Negative close prices should fail the schema contract."""
         from agrisignal.transforms.schemas import SilverSchema, validate, DataContractError
+
         bad_df = sample_silver_df.copy()
         bad_df.loc[5, "close"] = -10.0
         with pytest.raises(DataContractError):
@@ -120,6 +143,7 @@ class TestSchemas:
     def test_silver_schema_rejects_high_less_than_low(self, sample_silver_df):
         """High < Low is physically impossible — must be caught."""
         from agrisignal.transforms.schemas import SilverSchema, validate, DataContractError
+
         bad_df = sample_silver_df.copy()
         # Swap high and low on one row
         bad_df.loc[10, "high"] = bad_df.loc[10, "low"] - 5
@@ -129,6 +153,7 @@ class TestSchemas:
     def test_silver_schema_rejects_duplicate_dates(self, sample_silver_df):
         """Duplicate dates should violate the uniqueness contract."""
         from agrisignal.transforms.schemas import SilverSchema, validate, DataContractError
+
         dup_df = pd.concat([sample_silver_df, sample_silver_df.iloc[:5]]).reset_index(drop=True)
         with pytest.raises(DataContractError):
             validate(dup_df, SilverSchema, layer="test_dupe_dates")
@@ -144,6 +169,7 @@ class TestSchemas:
 # ═════════════════════════════════════════════════════════════════
 # Transform Tests
 # ═════════════════════════════════════════════════════════════════
+
 
 class TestTransforms:
 
@@ -169,6 +195,7 @@ class TestTransforms:
 # Feature Engineering Tests
 # ═════════════════════════════════════════════════════════════════
 
+
 class TestFeatureEngineering:
 
     def test_feature_count_reasonable(self, sample_gold_df):
@@ -188,17 +215,17 @@ class TestFeatureEngineering:
             if feat not in sample_gold_df.columns:
                 continue
             corr = sample_gold_df[feat].corr(lr)
-            assert abs(corr) < 0.95, (
-                f"Potential lookahead in {feat}: corr={corr:.4f} with next-day return"
-            )
+            assert (
+                abs(corr) < 0.95
+            ), f"Potential lookahead in {feat}: corr={corr:.4f} with next-day return"
 
     def test_target_last_n_rows_null(self, sample_gold_df):
         """The last `horizon` rows should have null targets (no future data)."""
         horizon = 5
         tail = sample_gold_df.tail(horizon)
-        assert tail["target"].isna().all(), (
-            f"Expected null targets in last {horizon} rows — potential lookahead!"
-        )
+        assert (
+            tail["target"].isna().all()
+        ), f"Expected null targets in last {horizon} rows — potential lookahead!"
 
     def test_gdd_non_negative(self, sample_gold_df):
         """Growing Degree Days are physically bounded at 0."""
@@ -244,11 +271,13 @@ class TestFeatureEngineering:
 # Walk-Forward CV Tests
 # ═════════════════════════════════════════════════════════════════
 
+
 class TestWalkForwardCV:
 
     def test_no_train_val_overlap(self):
         """Train and validation indices must never overlap."""
         from agrisignal.training.train_xgboost import WalkForwardCV
+
         wfcv = WalkForwardCV(n_splits=5, gap=5)
         X = pd.DataFrame(range(300))
         for tr, val in wfcv.split(X):
@@ -257,6 +286,7 @@ class TestWalkForwardCV:
     def test_validation_always_after_training(self):
         """Every validation index must be strictly greater than every training index."""
         from agrisignal.training.train_xgboost import WalkForwardCV
+
         wfcv = WalkForwardCV(n_splits=4, gap=5)
         X = pd.DataFrame(range(200))
         for tr, val in wfcv.split(X):
@@ -266,6 +296,7 @@ class TestWalkForwardCV:
         """The gap between train end and val start must be >= configured gap."""
         gap = 7
         from agrisignal.training.train_xgboost import WalkForwardCV
+
         wfcv = WalkForwardCV(n_splits=3, gap=gap)
         X = pd.DataFrame(range(200))
         for tr, val in wfcv.split(X):
@@ -275,6 +306,7 @@ class TestWalkForwardCV:
     def test_expanding_window(self):
         """Each successive fold should have more training data than the previous."""
         from agrisignal.training.train_xgboost import WalkForwardCV
+
         wfcv = WalkForwardCV(n_splits=4, gap=5)
         X = pd.DataFrame(range(250))
         prev_train_size = 0
@@ -287,12 +319,14 @@ class TestWalkForwardCV:
 # Data Quality Tests
 # ═════════════════════════════════════════════════════════════════
 
+
 class TestDataQuality:
 
     def test_quality_checks_pass_on_good_data(self, sample_gold_df):
         """Good synthetic data should pass all quality checks."""
         cfg_path = "/tmp/test_config.yaml"
         from agrisignal.monitoring.data_quality import run_quality_checks
+
         passed, report = run_quality_checks(sample_gold_df, config_path=cfg_path)
         # Row count, date continuity, leakage checks must pass
         assert report["row_count"]["passed"]
@@ -303,6 +337,7 @@ class TestDataQuality:
         """Empty DataFrame should fail immediately."""
         cfg_path = "/tmp/test_config.yaml"
         from agrisignal.monitoring.data_quality import run_quality_checks
+
         empty = pd.DataFrame(columns=["date", "close", "target", "log_return_1d"])
         empty["date"] = pd.Series([], dtype="datetime64[ns]")
         passed, report = run_quality_checks(empty, config_path=cfg_path)
@@ -312,6 +347,7 @@ class TestDataQuality:
     def test_psi_zero_for_identical_distributions(self):
         """PSI should be near 0 when reference and current are identical."""
         from agrisignal.monitoring.data_quality import population_stability_index
+
         data = np.random.randn(500)
         psi = population_stability_index(data, data)
         assert psi < 0.01, f"PSI={psi} for identical distributions (expected ~0)"
@@ -319,7 +355,8 @@ class TestDataQuality:
     def test_psi_large_for_shifted_distribution(self):
         """PSI should be large when distributions are very different."""
         from agrisignal.monitoring.data_quality import population_stability_index
+
         ref = np.random.normal(0, 1, 500)
-        cur = np.random.normal(5, 1, 500)   # Mean shifted by 5 sigma
+        cur = np.random.normal(5, 1, 500)  # Mean shifted by 5 sigma
         psi = population_stability_index(ref, cur)
         assert psi > 0.2, f"PSI={psi} for shifted distribution (expected > 0.2)"

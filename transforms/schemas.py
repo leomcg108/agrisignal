@@ -21,38 +21,36 @@ import pandera.pandas as pa
 from pandera import Column, DataFrameSchema, Check
 import pandas as pd
 
-
 # ─────────────────────────────────────────────────────────────────
 # Bronze layer schemas — minimal constraints, raw types
 # ─────────────────────────────────────────────────────────────────
 
 BronzeWeatherSchema = DataFrameSchema(
     columns={
-        "date":      Column(object,   nullable=False),
-        "datatype":  Column(str,      Check.isin(["TMAX", "TMIN", "PRCP", "SNOW"]),
-                            nullable=False),
-        "value":     Column(float,    nullable=True),   # NOAA occasionally has gaps
-        "station_id": Column(str,     nullable=False),
-        "region":    Column(str,      nullable=False),
+        "date": Column(object, nullable=False),
+        "datatype": Column(str, Check.isin(["TMAX", "TMIN", "PRCP", "SNOW"]), nullable=False),
+        "value": Column(float, nullable=True),  # NOAA occasionally has gaps
+        "station_id": Column(str, nullable=False),
+        "region": Column(str, nullable=False),
     },
     checks=[
         Check(lambda df: len(df) > 0, error="Bronze weather DataFrame is empty"),
     ],
-    coerce=True,    # Cast types where safe
-    strict=False,   # Allow extra columns (audit metadata)
+    coerce=True,  # Cast types where safe
+    strict=False,  # Allow extra columns (audit metadata)
     name="BronzeWeather",
 )
 
 BronzeFuturesSchema = DataFrameSchema(
     columns={
-        "Date":   Column(object,  nullable=False),
-        "Open":   Column(float,   Check.greater_than(0), nullable=False),
-        "High":   Column(float,   Check.greater_than(0), nullable=False),
-        "Low":    Column(float,   Check.greater_than(0), nullable=False),
-        "Close":  Column(float,   Check.greater_than(0), nullable=False),
-        "Volume": Column(float,   Check.greater_than_or_equal_to(0), nullable=False),
-        "ticker": Column(str,     nullable=False),
-        "label":  Column(str,     nullable=False),
+        "Date": Column(object, nullable=False),
+        "Open": Column(float, Check.greater_than(0), nullable=False),
+        "High": Column(float, Check.greater_than(0), nullable=False),
+        "Low": Column(float, Check.greater_than(0), nullable=False),
+        "Close": Column(float, Check.greater_than(0), nullable=False),
+        "Volume": Column(float, Check.greater_than_or_equal_to(0), nullable=False),
+        "ticker": Column(str, nullable=False),
+        "label": Column(str, nullable=False),
     },
     checks=[
         Check(
@@ -77,27 +75,24 @@ BronzeFuturesSchema = DataFrameSchema(
 SilverSchema = DataFrameSchema(
     columns={
         # Identity
-        "date":           Column(pa.DateTime, nullable=False),
-        "day_of_week":    Column(int, Check.isin(range(7)), nullable=False),
-
+        "date": Column(pa.DateTime, nullable=False),
+        "day_of_week": Column(int, Check.isin(range(7)), nullable=False),
         # Futures OHLCV (required, no nulls)
-        "open":           Column(float, Check.greater_than(0), nullable=False),
-        "high":           Column(float, Check.greater_than(0), nullable=False),
-        "low":            Column(float, Check.greater_than(0), nullable=False),
-        "close":          Column(float, Check.greater_than(0), nullable=False),
-        "volume":         Column(float, Check.greater_than_or_equal_to(0), nullable=False),
-        "returns_1d":     Column(float, nullable=True),  # NaN for first row
-        "log_return_1d":  Column(float, nullable=True),
-
+        "open": Column(float, Check.greater_than(0), nullable=False),
+        "high": Column(float, Check.greater_than(0), nullable=False),
+        "low": Column(float, Check.greater_than(0), nullable=False),
+        "close": Column(float, Check.greater_than(0), nullable=False),
+        "volume": Column(float, Check.greater_than_or_equal_to(0), nullable=False),
+        "returns_1d": Column(float, nullable=True),  # NaN for first row
+        "log_return_1d": Column(float, nullable=True),
         # Correlated instruments (nullable — may not trade same days)
-        "wheat_close":    Column(float, nullable=True),
-        "crude_close":    Column(float, nullable=True),
-        "usd_close":      Column(float, nullable=True),
-
+        "wheat_close": Column(float, nullable=True),
+        "crude_close": Column(float, nullable=True),
+        "usd_close": Column(float, nullable=True),
         # Weather aggregates (Corn Belt average, nullable for non-trading-day coverage)
-        "tmax_f":         Column(float, nullable=True),
-        "tmin_f":         Column(float, nullable=True),
-        "prcp_in":        Column(float, Check.greater_than_or_equal_to(0), nullable=True),
+        "tmax_f": Column(float, nullable=True),
+        "tmin_f": Column(float, nullable=True),
+        "prcp_in": Column(float, Check.greater_than_or_equal_to(0), nullable=True),
     },
     checks=[
         Check(
@@ -129,16 +124,14 @@ SilverSchema = DataFrameSchema(
 
 GoldSchema = DataFrameSchema(
     columns={
-        "date":         Column(pa.DateTime, nullable=False),
-        "close":        Column(float, Check.greater_than(0), nullable=False),
-
+        "date": Column(pa.DateTime, nullable=False),
+        "close": Column(float, Check.greater_than(0), nullable=False),
         # A sample of required feature columns (others validated by name pattern)
-        "rsi":          Column(float, Check.in_range(0, 100), nullable=True),
-        "bb_pct_b":     Column(float, nullable=True),
+        "rsi": Column(float, Check.in_range(0, 100), nullable=True),
+        "bb_pct_b": Column(float, nullable=True),
         "gdd_cumulative": Column(float, Check.greater_than_or_equal_to(0), nullable=True),
-
         # Target (nullable — last N rows will be NaN)
-        "target":       Column(float, nullable=True),
+        "target": Column(float, nullable=True),
     },
     checks=[
         Check(
@@ -161,8 +154,10 @@ GoldSchema = DataFrameSchema(
 # Validation helpers
 # ─────────────────────────────────────────────────────────────────
 
+
 class DataContractError(Exception):
     """Raised when a DataFrame fails a schema contract."""
+
     pass
 
 
@@ -179,6 +174,7 @@ def validate(
         df = validate(raw_df, BronzeWeatherSchema, layer="bronze/weather")
     """
     from agrisignal.utils import get_logger
+
     log = get_logger(__name__)
 
     try:

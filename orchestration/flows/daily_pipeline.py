@@ -29,6 +29,7 @@ from prefect import flow, task, get_run_logger
 # Task: Ingest weather (Bronze)
 # ─────────────────────────────────────────────────────────────────
 
+
 @task(
     name="ingest-weather",
     retries=3,
@@ -49,6 +50,7 @@ def ingest_weather(force_refresh: bool = False) -> int:
 # Task: Ingest futures (Bronze)
 # ─────────────────────────────────────────────────────────────────
 
+
 @task(
     name="ingest-futures",
     retries=3,
@@ -68,6 +70,7 @@ def ingest_futures(force_refresh: bool = False) -> int:
 # ─────────────────────────────────────────────────────────────────
 # Task: Build silver layer
 # ─────────────────────────────────────────────────────────────────
+
 
 @task(
     name="build-silver",
@@ -100,6 +103,7 @@ def build_silver() -> dict:
 # Task: Build gold / feature matrix
 # ─────────────────────────────────────────────────────────────────
 
+
 @task(
     name="build-gold",
     retries=1,
@@ -127,6 +131,7 @@ def build_gold() -> dict:
 # Task: Data quality check (gate before training)
 # ─────────────────────────────────────────────────────────────────
 
+
 @task(
     name="data-quality-check",
     description="Validate Gold layer data quality before training",
@@ -151,6 +156,7 @@ def data_quality_check() -> bool:
 # ─────────────────────────────────────────────────────────────────
 # Task: Train model (conditional — weekly on Mondays)
 # ─────────────────────────────────────────────────────────────────
+
 
 @task(
     name="train-model",
@@ -183,6 +189,7 @@ def train_model(force: bool = False) -> dict:
 # Task: Emit pipeline metrics
 # ─────────────────────────────────────────────────────────────────
 
+
 @task(name="emit-metrics", description="Push pipeline run metrics to monitoring")
 def emit_metrics(
     weather_partitions: int,
@@ -194,21 +201,24 @@ def emit_metrics(
     logger = get_run_logger()
     from agrisignal.monitoring.metrics import emit_pipeline_metrics
 
-    emit_pipeline_metrics({
-        "weather_partitions": weather_partitions,
-        "futures_instruments": futures_partitions,
-        "silver_rows": silver_stats.get("rows", 0),
-        "gold_rows": gold_stats.get("rows", 0),
-        "gold_features": gold_stats.get("features", 0),
-        "quality_passed": int(quality_passed),
-        "run_date": date.today().isoformat(),
-    })
+    emit_pipeline_metrics(
+        {
+            "weather_partitions": weather_partitions,
+            "futures_instruments": futures_partitions,
+            "silver_rows": silver_stats.get("rows", 0),
+            "gold_rows": gold_stats.get("rows", 0),
+            "gold_features": gold_stats.get("features", 0),
+            "quality_passed": int(quality_passed),
+            "run_date": date.today().isoformat(),
+        }
+    )
     logger.info("Metrics emitted")
 
 
 # ─────────────────────────────────────────────────────────────────
 # Main Flow
 # ─────────────────────────────────────────────────────────────────
+
 
 @flow(
     name="agrisignal-daily-pipeline",

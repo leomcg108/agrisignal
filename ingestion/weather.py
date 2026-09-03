@@ -25,7 +25,6 @@ import requests
 
 from agrisignal.utils import ParquetStore, get_logger, load_config, retry
 
-
 log = get_logger(__name__)
 
 
@@ -52,7 +51,7 @@ class NOAAWeatherIngester:
         self.session = self._build_session()
 
     def _build_session(self) -> requests.Session:
-        
+
         token = self.src_cfg["Token"]
 
         if not token:
@@ -67,15 +66,10 @@ class NOAAWeatherIngester:
     # ── Core fetch ────────────────────────────────────────────────
 
     @retry(max_attempts=3, exceptions=(requests.RequestException, ValueError))
-    def _fetch_period(
-        self,
-        station_id: str,
-        start_date: date,
-        end_date: date
-    ) -> list[dict]:
+    def _fetch_period(self, station_id: str, start_date: date, end_date: date) -> list[dict]:
         """
         Ingest weather data for a date range, fetching in 6-month chunks.
-    
+
         NOAA limit: 1000 rows per request
         Reality: 1 year × 365 days × 4 attributes = 1,460 rows (exceeds limit!)
         Solution: Fetch 6-month periods (182 days × 5 attributes = ~730 rows)
@@ -84,19 +78,19 @@ class NOAAWeatherIngester:
             station_id: NOAA station ID (e.g., 'USW00014933')
             start_date: Period start date
             end_date: Period end date
-            
+
         Returns:
             DataFrame with columns: date, station, datatype, value, attributes
             None if request fails or returns no data
         """
         params = {
-            "datasetid":   self.src_cfg["dataset"],
-            "stationid":   f"GHCND:{station_id}",
+            "datasetid": self.src_cfg["dataset"],
+            "stationid": f"GHCND:{station_id}",
             "startdate": start_date.strftime("%Y-%m-%d"),
             "enddate": end_date.strftime("%Y-%m-%d"),
-            "datatypeid":  ",".join(self.src_cfg["datatypes"]),
-            "limit":       1000,
-            "units":       "standard",
+            "datatypeid": ",".join(self.src_cfg["datatypes"]),
+            "limit": 1000,
+            "units": "standard",
         }
         resp = self.session.get(
             self.BASE_URL,
@@ -119,47 +113,43 @@ class NOAAWeatherIngester:
                 f"Hit 1000-row limit for {station_id} {start_date.date()}! "
                 f"Data may be truncated. Consider shorter periods."
             )
-        
+
         return results
-    
-    def _generate_6month_periods(
-        self,
-        start_date: date,
-        end_date: date
-    ) -> list[tuple[date, date]]:
+
+    def _generate_6month_periods(self, start_date: date, end_date: date) -> list[tuple[date, date]]:
         """
         Generate list of 6-month periods between start and end dates.
         Periods are aligned to calendar half-years:
         - H1: January 1 to June 30
         - H2: July 1 to December 31
-        
+
         Args:
             start_date: Overall start date
             end_date: Overall end date
-            
+
         Returns:
             List of (period_start, period_end) tuples
-            
+
         """
 
         periods = []
-    
+
         # Start from the beginning of the half-year containing start_date
         if start_date.month <= 6:
             current_start = date(start_date.year, 1, 1)
         else:
             current_start = date(start_date.year, 7, 1)
-        
+
         while current_start <= end_date:
             if current_start.month == 1:
                 current_end = date(current_start.year, 6, 30)
             else:
                 current_end = date(current_start.year, 12, 31)
-            
+
             periods.append((current_start, current_end))
 
             current_start = current_end + timedelta(days=1)
-    
+
         return periods
 
     # ── Public interface ──────────────────────────────────────────
@@ -195,11 +185,11 @@ class NOAAWeatherIngester:
             end_date = today
         if start_date is None:
             start_date = date(today.year - lookback, 1, 1)
-        
+
         log.info(f"Using lookback years={lookback}")
 
         periods = self._generate_6month_periods(start_date, end_date)
-    
+
         log.info(f"Generated {len(periods)} six-month periods across {len(stations)} stations")
 
         for region, station_id in stations.items():
@@ -268,8 +258,7 @@ class NOAAWeatherIngester:
 
         if not frames:
             raise RuntimeError(
-                "No weather data found in bronze layer. "
-                "Run ingest_date_range() first."
+                "No weather data found in bronze layer. " "Run ingest_date_range() first."
             )
 
         combined = pd.concat(frames, ignore_index=True)

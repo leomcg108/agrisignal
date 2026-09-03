@@ -32,13 +32,13 @@ from agrisignal.monitoring.metrics import (
 )
 from agrisignal.utils import get_logger, load_config
 
-
 log = get_logger(__name__)
 
 
 # ─────────────────────────────────────────────────────────────────
 # Predictor (singleton, loaded at startup)
 # ─────────────────────────────────────────────────────────────────
+
 
 class Predictor:
     """Loads model artifacts and serves predictions."""
@@ -97,7 +97,14 @@ class Predictor:
             "horizon_days": horizon_days or self.metadata["target_horizon_days"],
             "feature_snapshot": {
                 k: round(float(latest_row.get(k, 0)), 4)
-                for k in ["rsi", "macd", "bb_pct_b", "rvol_20d", "gdd_cumulative", "heat_stress_14d"]
+                for k in [
+                    "rsi",
+                    "macd",
+                    "bb_pct_b",
+                    "rvol_20d",
+                    "gdd_cumulative",
+                    "heat_stress_14d",
+                ]
                 if k in latest_row.index and pd.notna(latest_row.get(k))
             },
         }
@@ -111,7 +118,9 @@ async def lifespan(app: FastAPI):
     try:
         _predictor.load()
     except FileNotFoundError:
-        log.warning("No model found. Run the pipeline first: python -m orchestration.flows.daily_pipeline")
+        log.warning(
+            "No model found. Run the pipeline first: python -m orchestration.flows.daily_pipeline"
+        )
     except Exception as e:
         log.error(f"Model load failed: {e}")
     yield
@@ -136,8 +145,10 @@ _start_time = time.time()
 # Schemas
 # ─────────────────────────────────────────────────────────────────
 
+
 class PredictRequest(BaseModel):
     horizon_days: Optional[int] = Field(None, ge=1, le=30)
+
 
 class PredictResponse(BaseModel):
     as_of_date: str
@@ -151,6 +162,7 @@ class PredictResponse(BaseModel):
 # ─────────────────────────────────────────────────────────────────
 # Routes
 # ─────────────────────────────────────────────────────────────────
+
 
 @app.get("/health")
 async def health():

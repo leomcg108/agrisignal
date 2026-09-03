@@ -28,13 +28,13 @@ from sklearn.preprocessing import RobustScaler
 
 from agrisignal.utils import get_logger, load_config
 
-
 log = get_logger(__name__)
 
 
 # ─────────────────────────────────────────────────────────────────
 # Walk-Forward Cross-Validator
 # ─────────────────────────────────────────────────────────────────
+
 
 class WalkForwardCV:
     """
@@ -72,19 +72,21 @@ class WalkForwardCV:
 # Metrics
 # ─────────────────────────────────────────────────────────────────
 
+
 def compute_metrics(y_true: np.ndarray, y_pred: np.ndarray) -> dict[str, float]:
     return {
-        "mae":    float(mean_absolute_error(y_true, y_pred)),
-        "rmse":   float(np.sqrt(mean_squared_error(y_true, y_pred))),
-        "r2":     float(r2_score(y_true, y_pred)),
-        "da":     float(np.mean(np.sign(y_true) == np.sign(y_pred))),  # Directional accuracy
-        "corr":   float(np.corrcoef(y_true, y_pred)[0, 1]),
+        "mae": float(mean_absolute_error(y_true, y_pred)),
+        "rmse": float(np.sqrt(mean_squared_error(y_true, y_pred))),
+        "r2": float(r2_score(y_true, y_pred)),
+        "da": float(np.mean(np.sign(y_true) == np.sign(y_pred))),  # Directional accuracy
+        "corr": float(np.corrcoef(y_true, y_pred)[0, 1]),
     }
 
 
 # ─────────────────────────────────────────────────────────────────
 # Trainer
 # ─────────────────────────────────────────────────────────────────
+
 
 class XGBoostTrainer:
 
@@ -141,14 +143,16 @@ class XGBoostTrainer:
         if mlflow_available:
             try:
                 with mlflow.start_run(run_name="xgboost_corn"):
-                    mlflow.log_params({
-                        **self.m_cfg["params"],
-                        "n_features": len(feature_cols),
-                        "train_samples": len(X_train),
-                        "test_samples": len(X_test),
-                        "n_cv_splits": self.m_cfg["n_cv_splits"],
-                        "gap_days": self.m_cfg["gap_days"],
-                    })
+                    mlflow.log_params(
+                        {
+                            **self.m_cfg["params"],
+                            "n_features": len(feature_cols),
+                            "train_samples": len(X_train),
+                            "test_samples": len(X_test),
+                            "n_cv_splits": self.m_cfg["n_cv_splits"],
+                            "gap_days": self.m_cfg["gap_days"],
+                        }
+                    )
             except Exception as e:
                 log.warning(f"Failed to log to MLflow: {e}")
 
@@ -195,7 +199,8 @@ class XGBoostTrainer:
             params = {k: v for k, v in self.m_cfg["params"].items() if k != "eval_metric"}
             final_model = xgb.XGBRegressor(**params, verbosity=0)
             final_model.fit(
-                X_train, y_train,
+                X_train,
+                y_train,
                 eval_set=[(X_test, y_test)],
                 verbose=False,
             )
@@ -203,7 +208,7 @@ class XGBoostTrainer:
             # ── Test set evaluation ────────────────────────────────
             test_preds = final_model.predict(X_test)
             test_metrics = compute_metrics(y_test.values, test_preds)
-            test_metrics = {k : round(v, 2) for k, v in test_metrics.items()}
+            test_metrics = {k: round(v, 2) for k, v in test_metrics.items()}
             mlflow.log_metrics({f"test_{k}": v for k, v in test_metrics.items()})
 
             log.info(
@@ -260,10 +265,16 @@ class XGBoostTrainer:
         try:
             explainer = shap.TreeExplainer(model)
             shap_vals = explainer.shap_values(X)
-            return pd.DataFrame({
-                "feature": feature_cols,
-                "mean_abs_shap": np.abs(shap_vals).mean(axis=0),
-            }).sort_values("mean_abs_shap", ascending=False).reset_index(drop=True)
+            return (
+                pd.DataFrame(
+                    {
+                        "feature": feature_cols,
+                        "mean_abs_shap": np.abs(shap_vals).mean(axis=0),
+                    }
+                )
+                .sort_values("mean_abs_shap", ascending=False)
+                .reset_index(drop=True)
+            )
         except Exception as exc:
             log.warning(f"SHAP computation failed: {exc}")
             return pd.DataFrame({"feature": feature_cols, "mean_abs_shap": 0})
