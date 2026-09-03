@@ -24,7 +24,7 @@ import numpy as np
 import pandas as pd
 
 from agrisignal.transforms.schemas import DataContractError, SilverSchema, validate
-from agrisignal.utils import get_logger, load_config, ParquetStore
+from agrisignal.utils import ParquetStore, get_logger, load_config
 
 log = get_logger(__name__)
 

@@ -15,9 +15,9 @@ from __future__ import annotations
 import functools
 import logging
 import time
+from collections.abc import Callable
 from pathlib import Path
 from typing import Any
-from collections.abc import Callable
 
 import pandas as pd
 import yaml

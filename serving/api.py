@@ -16,7 +16,6 @@ from __future__ import annotations
 
 import time
 from contextlib import asynccontextmanager
-from typing import Optional
 
 import pandas as pd
 import uvicorn
@@ -197,7 +196,7 @@ async def predict(req: PredictRequest | None = None):
 
     except Exception as exc:
         prediction_requests.labels(status="error").inc()
-        log.exception(f"Prediction failed: {exc}", exc_info=True)
+        log.exception("Prediction failed")
         raise HTTPException(status_code=500, detail=str(exc))
 
 
