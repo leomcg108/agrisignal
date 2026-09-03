@@ -23,11 +23,10 @@ import numpy as np
 import pandas as pd
 import shap
 import xgboost as xgb
-import yaml
 from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
 from sklearn.preprocessing import RobustScaler
 
-from agrisignal.utils import ParquetStore, get_logger, load_config
+from agrisignal.utils import get_logger, load_config
 
 
 log = get_logger(__name__)
@@ -221,7 +220,7 @@ class XGBoostTrainer:
             shap_importance.to_csv(imp_path, index=False)
             mlflow.log_artifact(str(imp_path))
             log.info(
-                f"Top 5 features: "
+                "Top 5 features: "
                 + " | ".join(
                     f"{r['feature']} ({r['mean_abs_shap']:.4f})"
                     for _, r in shap_importance.head(5).iterrows()

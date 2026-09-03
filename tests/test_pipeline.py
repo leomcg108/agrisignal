@@ -17,7 +17,6 @@ from datetime import date
 
 import numpy as np
 import pandas as pd
-import pandera.pandas as pa
 import pytest
 
 # ─────────────────────────────────────────────────────────────────
@@ -64,7 +63,7 @@ def sample_gold_df(sample_silver_df):
     from pathlib import Path
     sys.path.insert(0, str(Path(__file__).parent.parent))
 
-    import yaml, tempfile, os
+    import yaml
 
     test_cfg = {
         "pipeline": {"name": "test", "commodity": "corn", "lookback_years": 2},
@@ -136,7 +135,6 @@ class TestSchemas:
 
     def test_rsi_bounds_in_gold(self, sample_gold_df):
         """RSI must always be in [0, 100]."""
-        from agrisignal.transforms.schemas import GoldSchema, validate
         # Gold schema validates RSI bounds automatically
         rsi = sample_gold_df["rsi"].dropna()
         assert (rsi >= 0).all(), "RSI below 0 detected"
@@ -221,7 +219,7 @@ class TestFeatureEngineering:
 
     def test_idempotent_feature_build(self, sample_silver_df, sample_gold_df):
         """Building features twice from the same silver data yields identical output."""
-        import yaml, sys
+        import sys
         from pathlib import Path
 
         cfg_path = "/tmp/test_config.yaml"
@@ -293,7 +291,6 @@ class TestDataQuality:
 
     def test_quality_checks_pass_on_good_data(self, sample_gold_df):
         """Good synthetic data should pass all quality checks."""
-        import yaml
         cfg_path = "/tmp/test_config.yaml"
         from agrisignal.monitoring.data_quality import run_quality_checks
         passed, report = run_quality_checks(sample_gold_df, config_path=cfg_path)
@@ -304,7 +301,6 @@ class TestDataQuality:
 
     def test_quality_fails_on_empty_df(self):
         """Empty DataFrame should fail immediately."""
-        import yaml
         cfg_path = "/tmp/test_config.yaml"
         from agrisignal.monitoring.data_quality import run_quality_checks
         empty = pd.DataFrame(columns=["date", "close", "target", "log_return_1d"])

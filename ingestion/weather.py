@@ -16,7 +16,6 @@ Free token: https://www.ncdc.noaa.gov/cdo-web/token
 
 from __future__ import annotations
 
-import os
 import time
 from datetime import date, timedelta
 from pathlib import Path
@@ -110,7 +109,7 @@ class NOAAWeatherIngester:
         results = data.get("results", [])
 
         if not results:
-            log.debug(f"No results: station={station_id} year={year}")
+            log.debug(f"No results: station={station_id} year={start_date.year}")
 
         df = pd.DataFrame(results)
 
@@ -183,7 +182,7 @@ class NOAAWeatherIngester:
         Returns:
             List of Parquet file paths written
         """
-        log.info(f"Starting weather ingestion")
+        log.info("Starting weather ingestion")
 
         written_paths: list[Path] = []
         stations = self.src_cfg["stations"]

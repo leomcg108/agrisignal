@@ -14,7 +14,6 @@ from __future__ import annotations
 
 import functools
 import logging
-import os
 import time
 from pathlib import Path
 from typing import Any, Callable

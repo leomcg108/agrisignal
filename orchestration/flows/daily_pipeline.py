@@ -21,13 +21,9 @@ Schedule (deployed):
 
 from __future__ import annotations
 
-import os
 from datetime import date
-import time
 
 from prefect import flow, task, get_run_logger
-from prefect.tasks import task_input_hash
-from datetime import timedelta as td
 
 # ─────────────────────────────────────────────────────────────────
 # Task: Ingest weather (Bronze)

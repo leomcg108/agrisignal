@@ -91,7 +91,7 @@ class FuturesIngester:
         Download and store all configured futures instruments.
         Partitioned by label (corn, wheat, crude, usd).
         """
-        log.info(f"Starting futures ingestion")
+        log.info("Starting futures ingestion")
         lookback = self.cfg["pipeline"]["lookback_years"]
         today = date.today()
 
