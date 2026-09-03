@@ -8,12 +8,12 @@ Exposes a /metrics endpoint in the API for scraping.
 from __future__ import annotations
 
 from prometheus_client import (
+    CONTENT_TYPE_LATEST,
     CollectorRegistry,
     Counter,
     Gauge,
     Histogram,
     generate_latest,
-    CONTENT_TYPE_LATEST,
 )
 
 # Shared registry

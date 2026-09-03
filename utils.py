@@ -16,7 +16,8 @@ import functools
 import logging
 import time
 from pathlib import Path
-from typing import Any, Callable
+from typing import Any
+from collections.abc import Callable
 
 import pandas as pd
 import yaml
@@ -39,7 +40,6 @@ def load_config(path: str | None = None) -> dict:
     4. ../configs/config.yaml (parent directory)
     5. {project_root}/configs/config.yaml (package location)
     """
-    global _CFG_CACHE
 
     if path is None:
         # Explicit path provided

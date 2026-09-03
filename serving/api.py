@@ -47,12 +47,12 @@ class Predictor:
         self.model = None
         self.scaler = None
         self.metadata: dict = {}
-        self._gold_df: Optional[pd.DataFrame] = None
+        self._gold_df: pd.DataFrame | None = None
         self._loaded = False
 
     def load(self):
-        from agrisignal.training.train_xgboost import XGBoostTrainer
         from agrisignal.features.engineer import FeatureEngineer
+        from agrisignal.training.train_xgboost import XGBoostTrainer
 
         trainer = XGBoostTrainer()
         self.model, self.scaler, self.metadata = trainer.load()
@@ -68,7 +68,7 @@ class Predictor:
     def is_ready(self) -> bool:
         return self._loaded and self.model is not None
 
-    def predict(self, horizon_days: Optional[int] = None) -> dict:
+    def predict(self, horizon_days: int | None = None) -> dict:
         """Generate prediction using most recent available feature row."""
         if not self.is_ready():
             raise RuntimeError("Model not loaded")
@@ -147,7 +147,7 @@ _start_time = time.time()
 
 
 class PredictRequest(BaseModel):
-    horizon_days: Optional[int] = Field(None, ge=1, le=30)
+    horizon_days: int | None = Field(None, ge=1, le=30)
 
 
 class PredictResponse(BaseModel):
@@ -175,7 +175,10 @@ async def health():
 
 
 @app.post("/predict", response_model=PredictResponse)
-async def predict(req: PredictRequest = PredictRequest()):
+async def predict(req: PredictRequest | None = None):
+    if req is None:
+        req = PredictRequest()
+
     if not _predictor.is_ready():
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
@@ -194,7 +197,7 @@ async def predict(req: PredictRequest = PredictRequest()):
 
     except Exception as exc:
         prediction_requests.labels(status="error").inc()
-        log.error(f"Prediction failed: {exc}", exc_info=True)
+        log.exception(f"Prediction failed: {exc}", exc_info=True)
         raise HTTPException(status_code=500, detail=str(exc))
 
 

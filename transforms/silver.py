@@ -24,7 +24,7 @@ import numpy as np
 import pandas as pd
 
 from agrisignal.transforms.schemas import DataContractError, SilverSchema, validate
-from agrisignal.utils import ParquetStore, get_logger, load_config
+from agrisignal.utils import get_logger, load_config, ParquetStore
 
 log = get_logger(__name__)
 
@@ -161,7 +161,7 @@ class SilverTransform:
             return pd.DataFrame(columns=["date"])
 
         # Merge all on date
-        result = list(correlated.values())[0]
+        result = next(iter(correlated.values()))
         for sub in list(correlated.values())[1:]:
             result = result.merge(sub, on="date", how="outer")
         return result

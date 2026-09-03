@@ -119,7 +119,7 @@ def run_quality_checks(
         "passed": gap_ok,
         "value": max_gap,
         "threshold": 5,
-        "message": f"Max date gap: {str(gap_date)} days (threshold: 5)",
+        "message": f"Max date gap: {gap_date!s} days (threshold: 5)",
     }
     if not gap_ok:
         # Warning only — don't fail pipeline for this

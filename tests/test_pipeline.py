@@ -133,7 +133,11 @@ class TestSchemas:
 
     def test_silver_schema_rejects_negative_close(self, sample_silver_df):
         """Negative close prices should fail the schema contract."""
-        from agrisignal.transforms.schemas import SilverSchema, validate, DataContractError
+        from agrisignal.transforms.schemas import (
+            DataContractError,
+            SilverSchema,
+            validate,
+        )
 
         bad_df = sample_silver_df.copy()
         bad_df.loc[5, "close"] = -10.0
@@ -142,7 +146,11 @@ class TestSchemas:
 
     def test_silver_schema_rejects_high_less_than_low(self, sample_silver_df):
         """High < Low is physically impossible — must be caught."""
-        from agrisignal.transforms.schemas import SilverSchema, validate, DataContractError
+        from agrisignal.transforms.schemas import (
+                    DataContractError,
+                    SilverSchema,
+                    validate,
+        )
 
         bad_df = sample_silver_df.copy()
         # Swap high and low on one row
@@ -152,7 +160,11 @@ class TestSchemas:
 
     def test_silver_schema_rejects_duplicate_dates(self, sample_silver_df):
         """Duplicate dates should violate the uniqueness contract."""
-        from agrisignal.transforms.schemas import SilverSchema, validate, DataContractError
+        from agrisignal.transforms.schemas import (
+                    DataContractError,
+                    SilverSchema,
+                    validate,
+        )
 
         dup_df = pd.concat([sample_silver_df, sample_silver_df.iloc[:5]]).reset_index(drop=True)
         with pytest.raises(DataContractError):
@@ -327,7 +339,7 @@ class TestDataQuality:
         cfg_path = "/tmp/test_config.yaml"
         from agrisignal.monitoring.data_quality import run_quality_checks
 
-        passed, report = run_quality_checks(sample_gold_df, config_path=cfg_path)
+        _passed, report = run_quality_checks(sample_gold_df, config_path=cfg_path)
         # Row count, date continuity, leakage checks must pass
         assert report["row_count"]["passed"]
         assert report["date_continuity"]["passed"]

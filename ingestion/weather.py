@@ -55,7 +55,7 @@ class NOAAWeatherIngester:
         token = self.src_cfg["Token"]
 
         if not token:
-            raise EnvironmentError(
+            raise OSError(
                 "NOAA_API_TOKEN not set. "
                 "Get a free token at https://www.ncdc.noaa.gov/cdo-web/token"
             )

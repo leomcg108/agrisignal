@@ -23,7 +23,7 @@ from __future__ import annotations
 
 from datetime import date
 
-from prefect import flow, task, get_run_logger
+from prefect import flow, get_run_logger, task
 
 # ─────────────────────────────────────────────────────────────────
 # Task: Ingest weather (Bronze)
@@ -79,8 +79,8 @@ def ingest_futures(force_refresh: bool = False) -> int:
 )
 def build_silver() -> dict:
     logger = get_run_logger()
-    from agrisignal.ingestion.weather import NOAAWeatherIngester
     from agrisignal.ingestion.futures import FuturesIngester
+    from agrisignal.ingestion.weather import NOAAWeatherIngester
     from agrisignal.transforms.silver import SilverTransform
 
     weather_raw = NOAAWeatherIngester().read_all()
@@ -111,8 +111,8 @@ def build_silver() -> dict:
 )
 def build_gold() -> dict:
     logger = get_run_logger()
-    from agrisignal.transforms.silver import SilverTransform
     from agrisignal.features.engineer import FeatureEngineer
+    from agrisignal.transforms.silver import SilverTransform
 
     silver_df = SilverTransform().read()
     feature_eng = FeatureEngineer()
