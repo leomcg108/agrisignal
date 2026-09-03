@@ -217,7 +217,7 @@ agrisignal/
 
 ```bash
 # 1. Clone the repository
-git clone https://github.com/YOUR_USERNAME/agrisignal.git
+git clone https://github.com/leomcg108/agrisignal.git
 cd agrisignal
 
 # 2. Create and activate virtual environment
