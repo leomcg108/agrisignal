@@ -147,9 +147,9 @@ class TestSchemas:
     def test_silver_schema_rejects_high_less_than_low(self, sample_silver_df):
         """High < Low is physically impossible — must be caught."""
         from agrisignal.transforms.schemas import (
-                    DataContractError,
-                    SilverSchema,
-                    validate,
+            DataContractError,
+            SilverSchema,
+            validate,
         )
 
         bad_df = sample_silver_df.copy()
@@ -161,9 +161,9 @@ class TestSchemas:
     def test_silver_schema_rejects_duplicate_dates(self, sample_silver_df):
         """Duplicate dates should violate the uniqueness contract."""
         from agrisignal.transforms.schemas import (
-                    DataContractError,
-                    SilverSchema,
-                    validate,
+            DataContractError,
+            SilverSchema,
+            validate,
         )
 
         dup_df = pd.concat([sample_silver_df, sample_silver_df.iloc[:5]]).reset_index(drop=True)

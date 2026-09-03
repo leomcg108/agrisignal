@@ -159,7 +159,6 @@ class DataContractError(Exception):
     """Raised when a DataFrame fails a schema contract."""
 
 
-
 def validate(
     df: pd.DataFrame,
     schema: DataFrameSchema,
