@@ -77,10 +77,6 @@ def sample_gold_df(sample_silver_df):
             "gold": "/tmp/agri_test/gold",
             "models": "/tmp/agri_test/models",
         },
-        "monitoring": {
-            "min_row_fraction": 0.80,
-            "psi_critical": 0.20,
-        },
         "sources": {"weather": {"stations": {}}, "futures": {"ticker": "ZC=F", "correlated": {}}},
         "transforms": {
             "max_null_rate": 0.05,
