@@ -58,6 +58,18 @@ def run_quality_checks(
     Returns:
         (all_passed: bool, report: dict of check results)
     """
+
+    # ── Guard: empty DataFrame ─────────────────────────────────
+    if df.empty:
+        log.warning("Empty DataFrame passed to quality checks")
+        return False, {
+            "row_count": {
+                "passed": False,
+                "value": 0,
+                "message": "Empty DataFrame — no rows to validate",
+            }
+        }
+
     cfg = load_config(config_path)
     report = {}
     all_passed = True
