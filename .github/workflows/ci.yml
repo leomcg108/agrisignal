@@ -19,7 +19,9 @@ jobs:
           cache: pip
 
       - name: Install dependencies
-        run: pip install -r requirements.txt
+        run: |
+          pip install -r requirements.txt
+          pip install pytest-cov
 
       - name: Lint (ruff)
         run: ruff check . --ignore E501,E402,BLE001,DTZ011
