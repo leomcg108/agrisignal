@@ -13,6 +13,11 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 COPY requirements.txt .
 RUN pip install --no-cache-dir --prefix=/install -r requirements.txt
 
+# Install the agrisignal package itself (without re-installing dependencies)
+COPY setup.py .
+COPY agrisignal/ agrisignal/
+RUN pip install --no-cache-dir --prefix=/install --no-deps .
+
 
 # ═══════════════════════════════════════════════════════════════
 # Stage 2: lean runtime image
