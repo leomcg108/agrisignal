@@ -189,7 +189,11 @@ agrisignal/
 │
 ├── configs/
 │   ├── config.yaml                # Runtime config (gitignored)
-│   └── config.example.yaml        # Template (committed)
+│   ├── config.example.yaml        # Template (committed)
+│   └── prometheus.yml             # Prometheus scrape config
+│
+├── scripts/
+│   └── init_dbs.sh                # Creates the MLflow + Prefect Postgres databases
 │
 ├── docker/
 │   ├── Dockerfile

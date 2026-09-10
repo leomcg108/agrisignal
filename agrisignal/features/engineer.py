@@ -32,7 +32,7 @@ class FeatureEngineer:
     Builds the gold feature matrix from a validated silver DataFrame.
     """
 
-    def __init__(self, config_path: str = "configs/config.yaml"):
+    def __init__(self, config_path: str | None = None):
         self.cfg = load_config(config_path)
         self.f_cfg = self.cfg["features"]
         self.silver_store = ParquetStore(self.cfg["storage"]["silver"])

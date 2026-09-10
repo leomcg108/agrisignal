@@ -118,7 +118,8 @@ async def lifespan(app: FastAPI):
         _predictor.load()
     except FileNotFoundError:
         log.warning(
-            "No model found. Run the pipeline first: python -m orchestration.flows.daily_pipeline"
+            "No model found. Run the pipeline first: "
+            "python -m agrisignal.orchestration.flows.daily_pipeline"
         )
     except Exception as e:
         log.error(f"Model load failed: {e}")

@@ -13,6 +13,8 @@ data/models/
 # Secrets
 .env
 .env.*
+!.env.example
+configs/config.yaml
 
 # MLflow local runs
 mlruns/

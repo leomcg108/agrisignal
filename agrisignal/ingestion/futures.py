@@ -40,7 +40,7 @@ class FuturesIngester:
       _ingest_ts   : str
     """
 
-    def __init__(self, config_path: str = "configs/config.yaml"):
+    def __init__(self, config_path: str | None = None):
         self.cfg = load_config(config_path)
         self.src_cfg = self.cfg["sources"]["futures"]
         self.store = ParquetStore(self.cfg["storage"]["bronze"] + "/futures")

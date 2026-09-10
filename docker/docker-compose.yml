@@ -35,7 +35,7 @@ services:
       POSTGRES_MULTIPLE_DATABASES: mlflow,prefect
     volumes:
       - postgres_data:/var/lib/postgresql/data
-      - ./scripts/init_dbs.sh:/docker-entrypoint-initdb.d/init_dbs.sh:ro
+      - ../scripts/init_dbs.sh:/docker-entrypoint-initdb.d/init_dbs.sh:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U agrisignal"]
       interval: 10s
@@ -82,11 +82,12 @@ services:
     build:
       context: ..
       dockerfile: docker/Dockerfile
-    command: python -m orchestration.flows.daily_pipeline
+    command: python -m agrisignal.orchestration.flows.daily_pipeline
     environment:
       <<: *common-env
     volumes:
       - pipeline_data:/app/data
+      - ../configs:/app/configs:ro
     depends_on:
       mlflow: { condition: service_healthy }
     networks: [agrisignal]
@@ -105,6 +106,7 @@ services:
     ports: ["8000:8000"]
     volumes:
       - pipeline_data:/app/data:ro
+      - ../configs:/app/configs:ro
     depends_on:
       mlflow: { condition: service_healthy }
     healthcheck:
@@ -124,7 +126,7 @@ services:
       - --storage.tsdb.path=/prometheus
       - --web.enable-lifecycle
     volumes:
-      - ./configs/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ../configs/prometheus.yml:/etc/prometheus/prometheus.yml:ro
       - prometheus_data:/prometheus
     ports: ["9090:9090"]
     networks: [agrisignal]

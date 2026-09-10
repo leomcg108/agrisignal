@@ -4,7 +4,7 @@ from setuptools import find_packages, setup
 setup(
     name="agrisignal",
     version="1.0.0",
-    packages=find_packages(),
+    packages=find_packages(include=["agrisignal", "agrisignal.*"]),
     install_requires=[
         "pandas>=2.0.0",
         "numpy>=1.24.0",

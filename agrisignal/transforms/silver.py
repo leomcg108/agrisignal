@@ -33,7 +33,7 @@ class SilverTransform:
     Produces the silver dataset: one row per trading day, all sources joined.
     """
 
-    def __init__(self, config_path: str = "configs/config.yaml"):
+    def __init__(self, config_path: str | None = None):
         self.cfg = load_config(config_path)
         self.t_cfg = self.cfg["transforms"]
         self.bronze_store = ParquetStore(self.cfg["storage"]["bronze"])

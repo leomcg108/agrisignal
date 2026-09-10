@@ -1,0 +1,28 @@
+# Build context is the repo root (docker build -f docker/Dockerfile .)
+# Keep secrets, local environments, and data out of the image.
+
+.git
+.github
+.agrisignal
+.venv
+venv
+.conda
+.vscode
+*.code-workspace
+
+**/__pycache__
+**/*.py[cod]
+.pytest_cache
+.ruff_cache
+.coverage
+coverage.xml
+test-results.xml
+
+data
+mlruns
+*.parquet
+
+# Secrets — runtime config is mounted by docker-compose instead
+.env
+.env.*
+configs/config.yaml

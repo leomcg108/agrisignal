@@ -90,7 +90,7 @@ def compute_metrics(y_true: np.ndarray, y_pred: np.ndarray) -> dict[str, float]:
 
 class XGBoostTrainer:
 
-    def __init__(self, config_path: str = "configs/config.yaml"):
+    def __init__(self, config_path: str | None = None):
         self.cfg = load_config(config_path)
         self.m_cfg = self.cfg["model"]
         self.models_path = Path(self.cfg["storage"]["models"])

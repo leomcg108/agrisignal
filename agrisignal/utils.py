@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import functools
 import logging
+import os
 import time
 from collections.abc import Callable
 from pathlib import Path
@@ -41,7 +42,7 @@ def load_config(path: str | None = None) -> dict:
     5. {project_root}/configs/config.yaml (package location)
     """
 
-    if path is None:
+    if path is not None:
         # Explicit path provided
         candidates = [Path(path)]
     else:
@@ -49,20 +50,17 @@ def load_config(path: str | None = None) -> dict:
         candidates = []
 
         # Check environment variable
-        # env_path = os.getenv("AGRISIGNAL_CONFIG")
-        # if env_path:
-        #     candidates.append(Path(env_path))
-
-        # Current directory
-        candidates.append(Path.cwd() / "agrisignal" / "configs" / "config.yaml")
+        env_path = os.getenv("AGRISIGNAL_CONFIG")
+        if env_path:
+            candidates.append(Path(env_path))
 
         # Current directory
         candidates.append(Path.cwd() / "configs" / "config.yaml")
 
-        # Parent directory (in case running from agrisignal/ subdirectory)
+        # Parent directory (in case running from a subdirectory)
         candidates.append(Path.cwd().parent / "configs" / "config.yaml")
 
-        # Project root (relative to this file)
+        # Project root (agrisignal/utils.py → repo root)
         utils_dir = Path(__file__).parent
         project_root = utils_dir.parent
         candidates.append(project_root / "configs" / "config.yaml")

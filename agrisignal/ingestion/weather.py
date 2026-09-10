@@ -44,7 +44,7 @@ class NOAAWeatherIngester:
 
     BASE_URL = "https://www.ncdc.noaa.gov/cdo-web/api/v2/data"
 
-    def __init__(self, config_path: str = "configs/config.yaml"):
+    def __init__(self, config_path: str | None = None):
         self.cfg = load_config(config_path)
         self.src_cfg = self.cfg["sources"]["weather"]
         self.store = ParquetStore(self.cfg["storage"]["bronze"] + "/weather")

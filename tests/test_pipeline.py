@@ -62,11 +62,6 @@ def sample_silver_df():
 @pytest.fixture(scope="module")
 def sample_gold_df(sample_silver_df):
     """Build gold feature matrix from synthetic silver."""
-    import sys
-    from pathlib import Path
-
-    sys.path.insert(0, str(Path(__file__).parent.parent))
-
     import yaml
 
     test_cfg = {
@@ -258,11 +253,7 @@ class TestFeatureEngineering:
 
     def test_idempotent_feature_build(self, sample_silver_df, sample_gold_df):
         """Building features twice from the same silver data yields identical output."""
-        import sys
-        from pathlib import Path
-
         cfg_path = "/tmp/test_config.yaml"
-        sys.path.insert(0, str(Path(__file__).parent.parent))
         from agrisignal.features.engineer import FeatureEngineer
 
         eng = FeatureEngineer(config_path=cfg_path)

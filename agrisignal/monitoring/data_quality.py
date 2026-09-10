@@ -50,7 +50,7 @@ def population_stability_index(
 
 def run_quality_checks(
     df: pd.DataFrame,
-    config_path: str = "configs/config.yaml",
+    config_path: str | None = None,
 ) -> tuple[bool, dict]:
     """
     Run all data quality checks on the Gold feature matrix.

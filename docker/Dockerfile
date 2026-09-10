@@ -34,8 +34,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 # Copy installed Python packages from builder
 COPY --from=builder /install /usr/local
 
-# Copy application source
-COPY . .
+# Copy application source (only what the runtime needs; see .dockerignore)
+COPY agrisignal/ agrisignal/
+COPY configs/ configs/
 
 # Create non-root user (security best practice)
 RUN useradd -m -u 1000 -s /bin/bash agrisignal \
