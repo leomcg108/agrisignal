@@ -44,12 +44,18 @@ def sample_silver_df():
             "close": prices,
             "volume": np.random.randint(60_000, 200_000, n).astype(float),
             "returns_1d": np.concatenate([[np.nan], np.diff(prices) / prices[:-1]]),
-            "log_return_1d": np.concatenate([[np.nan], np.log(prices[1:] / prices[:-1])]),
+            "log_return_1d": np.concatenate(
+                [[np.nan], np.log(prices[1:] / prices[:-1])]
+            ),
             "high_low_pct": np.abs(np.random.randn(n)) * 0.02,
             "day_of_week": pd.to_datetime(dates).dayofweek,
             "month": pd.to_datetime(dates).month,
-            "tmax_f": 65 + 20 * np.sin(2 * np.pi * np.arange(n) / 252) + np.random.randn(n) * 5,
-            "tmin_f": 45 + 18 * np.sin(2 * np.pi * np.arange(n) / 252) + np.random.randn(n) * 4,
+            "tmax_f": 65
+            + 20 * np.sin(2 * np.pi * np.arange(n) / 252)
+            + np.random.randn(n) * 5,
+            "tmin_f": 45
+            + 18 * np.sin(2 * np.pi * np.arange(n) / 252)
+            + np.random.randn(n) * 4,
             "prcp_in": np.abs(np.random.randn(n) * 0.08),
             "wheat_close": 350 + np.cumsum(np.random.randn(n) * 2),
             "crude_close": 80 + np.cumsum(np.random.randn(n) * 1),
@@ -72,7 +78,10 @@ def sample_gold_df(sample_silver_df):
             "gold": "/tmp/agri_test/gold",
             "models": "/tmp/agri_test/models",
         },
-        "sources": {"weather": {"stations": {}}, "futures": {"ticker": "ZC=F", "correlated": {}}},
+        "sources": {
+            "weather": {"stations": {}},
+            "futures": {"ticker": "ZC=F", "correlated": {}},
+        },
         "transforms": {
             "max_null_rate": 0.05,
             "min_station_coverage": 0.8,
@@ -92,8 +101,16 @@ def sample_gold_df(sample_silver_df):
             "target_type": "return",
         },
         "model": {"params": {}, "test_size": 0.15, "n_cv_splits": 3, "gap_days": 5},
-        "mlflow": {"tracking_uri": "sqlite:///test_mlflow.db", "experiment_name": "test"},
-        "api": {"host": "0.0.0.0", "port": 8000, "workers": 1, "cache_predictions_ttl_s": 60},
+        "mlflow": {
+            "tracking_uri": "sqlite:///test_mlflow.db",
+            "experiment_name": "test",
+        },
+        "api": {
+            "host": "0.0.0.0",
+            "port": 8000,
+            "workers": 1,
+            "cache_predictions_ttl_s": 60,
+        },
         "orchestration": {},
         "monitoring": {
             "psi_warning": 0.1,
@@ -161,7 +178,9 @@ class TestSchemas:
             validate,
         )
 
-        dup_df = pd.concat([sample_silver_df, sample_silver_df.iloc[:5]]).reset_index(drop=True)
+        dup_df = pd.concat([sample_silver_df, sample_silver_df.iloc[:5]]).reset_index(
+            drop=True
+        )
         with pytest.raises(DataContractError):
             validate(dup_df, SilverSchema, layer="test_dupe_dates")
 
@@ -207,9 +226,20 @@ class TestFeatureEngineering:
 
     def test_feature_count_reasonable(self, sample_gold_df):
         """Gold layer should have a meaningful number of features."""
-        exclude = {"date", "target", "target_horizon", "open", "high", "low", "close", "volume"}
+        exclude = {
+            "date",
+            "target",
+            "target_horizon",
+            "open",
+            "high",
+            "low",
+            "close",
+            "volume",
+        }
         feature_cols = [c for c in sample_gold_df.columns if c not in exclude]
-        assert len(feature_cols) >= 40, f"Only {len(feature_cols)} features — expected 40+"
+        assert (
+            len(feature_cols) >= 40
+        ), f"Only {len(feature_cols)} features — expected 40+"
 
     def test_no_lookahead_bias_in_features(self, sample_gold_df):
         """

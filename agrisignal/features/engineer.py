@@ -131,7 +131,9 @@ class FeatureEngineer:
             df[f"rvol_{w}d"] = lr.rolling(w).std() * np.sqrt(252)  # Annualized
 
         # Volatility regime: is current vol above its 60d average?
-        df["vol_regime"] = (df["rvol_20d"] > df["rvol_20d"].rolling(60).mean()).astype(int)
+        df["vol_regime"] = (df["rvol_20d"] > df["rvol_20d"].rolling(60).mean()).astype(
+            int
+        )
 
         # Parkinson range-based volatility estimator
         df["parkinson_vol"] = (
@@ -164,19 +166,25 @@ class FeatureEngineer:
         # Heat stress accumulation
         df["heat_stress_flag"] = (df["tmax_f"] > stress).astype(int)
         for w in [7, 14, 30]:
-            df[f"heat_stress_{w}d"] = df["heat_stress_flag"].rolling(w, min_periods=1).sum()
+            df[f"heat_stress_{w}d"] = (
+                df["heat_stress_flag"].rolling(w, min_periods=1).sum()
+            )
 
         # Precipitation anomaly (z-score vs trailing 365d)
         if "prcp_in" in df.columns:
             rolling_mean = df["prcp_in"].rolling(365, min_periods=30).mean()
             rolling_std = df["prcp_in"].rolling(365, min_periods=30).std()
-            df["prcp_zscore"] = (df["prcp_in"] - rolling_mean) / rolling_std.replace(0, np.nan)
+            df["prcp_zscore"] = (df["prcp_in"] - rolling_mean) / rolling_std.replace(
+                0, np.nan
+            )
             for w in [10, 20, 30]:
                 df[f"prcp_sum_{w}d"] = df["prcp_in"].rolling(w, min_periods=1).sum()
 
         # Temperature trend
         df["tmax_7d_avg"] = df["tmax_f"].rolling(7).mean()
-        df["tmax_anomaly_30d"] = df["tmax_f"] - df["tmax_f"].rolling(365, min_periods=30).mean()
+        df["tmax_anomaly_30d"] = (
+            df["tmax_f"] - df["tmax_f"].rolling(365, min_periods=30).mean()
+        )
 
         return df
 
@@ -282,7 +290,8 @@ class FeatureEngineer:
 
         path = self.gold_store.write(df, "gold_features")
         log.info(
-            f"Gold complete: {len(df):,} rows | " f"{len(self._feature_names)} features | {path}"
+            f"Gold complete: {len(df):,} rows | "
+            f"{len(self._feature_names)} features | {path}"
         )
 
         return df
@@ -307,7 +316,8 @@ class FeatureEngineer:
             c
             for c in gold_df.columns
             if c not in _exclude
-            and gold_df[c].dtype in (np.float64, np.float32, np.int64, np.int32, float, int)
+            and gold_df[c].dtype
+            in (np.float64, np.float32, np.int64, np.int32, float, int)
         ]
 
     @property

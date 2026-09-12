@@ -28,7 +28,9 @@ from pandera import Check, Column, DataFrameSchema
 BronzeWeatherSchema = DataFrameSchema(
     columns={
         "date": Column(object, nullable=False),
-        "datatype": Column(str, Check.isin(["TMAX", "TMIN", "PRCP", "SNOW"]), nullable=False),
+        "datatype": Column(
+            str, Check.isin(["TMAX", "TMIN", "PRCP", "SNOW"]), nullable=False
+        ),
         "value": Column(float, nullable=True),  # NOAA occasionally has gaps
         "station_id": Column(str, nullable=False),
         "region": Column(str, nullable=False),
@@ -129,7 +131,9 @@ GoldSchema = DataFrameSchema(
         # A sample of required feature columns (others validated by name pattern)
         "rsi": Column(float, Check.in_range(0, 100), nullable=True),
         "bb_pct_b": Column(float, nullable=True),
-        "gdd_cumulative": Column(float, Check.greater_than_or_equal_to(0), nullable=True),
+        "gdd_cumulative": Column(
+            float, Check.greater_than_or_equal_to(0), nullable=True
+        ),
         # Target (nullable — last N rows will be NaN)
         "target": Column(float, nullable=True),
     },

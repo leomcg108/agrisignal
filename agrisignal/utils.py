@@ -154,7 +154,9 @@ def retry(
                     return func(*args, **kwargs)
                 except exceptions as exc:
                     if attempt == max_attempts:
-                        log.error(f"{func.__name__} failed after {max_attempts} attempts: {exc}")
+                        log.error(
+                            f"{func.__name__} failed after {max_attempts} attempts: {exc}"
+                        )
                         raise
                     wait = backoff_base**attempt
                     log.warning(

@@ -107,7 +107,11 @@ class SilverTransform:
         df["date"] = pd.to_datetime(df[date_col]).dt.normalize()
 
         # Drop duplicates and sort
-        df = df.drop_duplicates(subset=["date"]).sort_values("date").reset_index(drop=True)
+        df = (
+            df.drop_duplicates(subset=["date"])
+            .sort_values("date")
+            .reset_index(drop=True)
+        )
 
         # Drop clearly bad rows
         min_vol = self.t_cfg["min_daily_volume"]
@@ -153,7 +157,9 @@ class SilverTransform:
                 continue
             sub = raw[[date_col, "close"]].copy()
             sub["date"] = pd.to_datetime(sub[date_col]).dt.normalize()
-            sub = sub.drop_duplicates("date").rename(columns={"close": f"{label}_close"})
+            sub = sub.drop_duplicates("date").rename(
+                columns={"close": f"{label}_close"}
+            )
             correlated[label] = sub[["date", f"{label}_close"]]
 
         if not correlated:

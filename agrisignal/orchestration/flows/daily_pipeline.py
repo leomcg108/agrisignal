@@ -266,8 +266,12 @@ def daily_pipeline(
 
     # Metrics (always runs)
     emit_metrics(
-        weather_partitions=0 if skip_ingestion else weather_n.result(raise_on_failure=False) or 0,
-        futures_partitions=0 if skip_ingestion else futures_n.result(raise_on_failure=False) or 0,
+        weather_partitions=(
+            0 if skip_ingestion else weather_n.result(raise_on_failure=False) or 0
+        ),
+        futures_partitions=(
+            0 if skip_ingestion else futures_n.result(raise_on_failure=False) or 0
+        ),
         silver_stats=silver_stats,
         gold_stats=gold_stats,
         quality_passed=quality_ok,
@@ -289,7 +293,9 @@ if __name__ == "__main__":
         "--force-refresh", action="store_true", help="Re-download all source data"
     )
     parser.add_argument(
-        "--force-train", action="store_true", help="Train model even if today is not Monday"
+        "--force-train",
+        action="store_true",
+        help="Train model even if today is not Monday",
     )
     parser.add_argument(
         "--skip-ingestion",
