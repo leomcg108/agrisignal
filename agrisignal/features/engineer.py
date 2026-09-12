@@ -278,7 +278,21 @@ class FeatureEngineer:
         # Validate schema contract
         df = validate(df, GoldSchema, layer="gold")
 
-        # Store feature names (exclude metadata and target cols)
+        self._feature_names = self.feature_columns(df)
+
+        path = self.gold_store.write(df, "gold_features")
+        log.info(
+            f"Gold complete: {len(df):,} rows | " f"{len(self._feature_names)} features | {path}"
+        )
+
+        return df
+
+    @staticmethod
+    def feature_columns(gold_df: pd.DataFrame) -> list[str]:
+        """
+        Model input columns of a gold feature matrix: numeric columns,
+        excluding metadata and target cols. Does not rebuild or write.
+        """
         _exclude = {
             "date",
             "target",
@@ -289,19 +303,12 @@ class FeatureEngineer:
             "close",
             "volume",
         }
-        self._feature_names = [
+        return [
             c
-            for c in df.columns
+            for c in gold_df.columns
             if c not in _exclude
-            and df[c].dtype in (np.float64, np.float32, np.int64, np.int32, float, int)
+            and gold_df[c].dtype in (np.float64, np.float32, np.int64, np.int32, float, int)
         ]
-
-        path = self.gold_store.write(df, "gold_features")
-        log.info(
-            f"Gold complete: {len(df):,} rows | " f"{len(self._feature_names)} features | {path}"
-        )
-
-        return df
 
     @property
     def feature_names(self) -> list[str]:

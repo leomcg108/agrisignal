@@ -269,6 +269,20 @@ class TestFeatureEngineering:
                     rtol=1e-5,
                 )
 
+    def test_feature_columns_match_build(self, sample_silver_df):
+        """Feature names derived from an existing gold frame match those set by build()."""
+        cfg_path = "/tmp/test_config.yaml"
+        from agrisignal.features.engineer import FeatureEngineer
+
+        eng = FeatureEngineer(config_path=cfg_path)
+        eng.build(sample_silver_df)
+        gold_df = eng.read()
+
+        feature_names = FeatureEngineer.feature_columns(gold_df)
+        assert feature_names == eng.feature_names
+        assert "target" not in feature_names
+        assert "date" not in feature_names
+
 
 # ═════════════════════════════════════════════════════════════════
 # Walk-Forward CV Tests

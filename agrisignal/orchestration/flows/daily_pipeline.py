@@ -12,7 +12,7 @@ This is the data engineering centrepiece — it shows:
   ✓ Conditional retraining (only on Mondays after USDA reports) # remove
 
 Run locally:
-  python orchestration/flows/daily_pipeline.py
+  python -m agrisignal.orchestration.flows.daily_pipeline [--force-train] [--force-refresh] [--skip-ingestion]
 
 Schedule (deployed):
   prefect deployment build orchestration/flows/daily_pipeline.py:daily_pipeline
@@ -175,11 +175,10 @@ def train_model(force: bool = False) -> dict:
     from agrisignal.training.train_xgboost import XGBoostTrainer
 
     gold_df = FeatureEngineer().read()
-    engineer = FeatureEngineer()
-    engineer.build(gold_df)  # Ensures feature_names are set
+    feature_names = FeatureEngineer.feature_columns(gold_df)
 
     trainer = XGBoostTrainer()
-    _, metrics = trainer.train(gold_df, engineer.feature_names)
+    _, metrics = trainer.train(gold_df, feature_names)
 
     logger.info(f"Training complete: DA={metrics['da']:.3f} | MAE={metrics['mae']:.4f}")
     return metrics
@@ -228,6 +227,7 @@ def emit_metrics(
 def daily_pipeline(
     force_refresh: bool = False,
     force_train: bool = False,
+    skip_ingestion: bool = False,
 ) -> dict:
     """
     Full AgriSignal data pipeline.
@@ -241,13 +241,19 @@ def daily_pipeline(
     Args:
         force_refresh:  Re-download all source data
         force_train:    Train model even if today is not Monday
+        skip_ingestion: Reuse existing Bronze data instead of downloading
     """
-    # Ingestion runs in parallel (independent sources)
-    weather_n = ingest_weather.submit(force_refresh=force_refresh)
-    futures_n = ingest_futures.submit(force_refresh=force_refresh)
+    if skip_ingestion:
+        get_run_logger().info("Skipping ingestion — using existing Bronze data")
+        ingestion = []
+    else:
+        # Ingestion runs in parallel (independent sources)
+        weather_n = ingest_weather.submit(force_refresh=force_refresh)
+        futures_n = ingest_futures.submit(force_refresh=force_refresh)
+        ingestion = [weather_n, futures_n]
 
     # Silver waits for both ingestion tasks
-    silver_stats = build_silver(wait_for=[weather_n, futures_n])
+    silver_stats = build_silver(wait_for=ingestion)
 
     # Gold waits for silver
     gold_stats = build_gold(wait_for=[silver_stats])
@@ -260,8 +266,8 @@ def daily_pipeline(
 
     # Metrics (always runs)
     emit_metrics(
-        weather_partitions=weather_n.result(raise_on_failure=False) or 0,
-        futures_partitions=futures_n.result(raise_on_failure=False) or 0,
+        weather_partitions=0 if skip_ingestion else weather_n.result(raise_on_failure=False) or 0,
+        futures_partitions=0 if skip_ingestion else futures_n.result(raise_on_failure=False) or 0,
         silver_stats=silver_stats,
         gold_stats=gold_stats,
         quality_passed=quality_ok,
@@ -276,5 +282,28 @@ def daily_pipeline(
 
 
 if __name__ == "__main__":
-    result = daily_pipeline(force_refresh=False, force_train=False)
+    import argparse
+
+    parser = argparse.ArgumentParser(description="Run the AgriSignal daily pipeline")
+    parser.add_argument(
+        "--force-refresh", action="store_true", help="Re-download all source data"
+    )
+    parser.add_argument(
+        "--force-train", action="store_true", help="Train model even if today is not Monday"
+    )
+    parser.add_argument(
+        "--skip-ingestion",
+        action="store_true",
+        help="Reuse existing Bronze data instead of downloading",
+    )
+    args = parser.parse_args()
+
+    if args.skip_ingestion and args.force_refresh:
+        parser.error("--force-refresh cannot be combined with --skip-ingestion")
+
+    result = daily_pipeline(
+        force_refresh=args.force_refresh,
+        force_train=args.force_train,
+        skip_ingestion=args.skip_ingestion,
+    )
     print(f"\nPipeline complete: {result}")
