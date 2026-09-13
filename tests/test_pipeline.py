@@ -44,18 +44,12 @@ def sample_silver_df():
             "close": prices,
             "volume": np.random.randint(60_000, 200_000, n).astype(float),
             "returns_1d": np.concatenate([[np.nan], np.diff(prices) / prices[:-1]]),
-            "log_return_1d": np.concatenate(
-                [[np.nan], np.log(prices[1:] / prices[:-1])]
-            ),
+            "log_return_1d": np.concatenate([[np.nan], np.log(prices[1:] / prices[:-1])]),
             "high_low_pct": np.abs(np.random.randn(n)) * 0.02,
             "day_of_week": pd.to_datetime(dates).dayofweek,
             "month": pd.to_datetime(dates).month,
-            "tmax_f": 65
-            + 20 * np.sin(2 * np.pi * np.arange(n) / 252)
-            + np.random.randn(n) * 5,
-            "tmin_f": 45
-            + 18 * np.sin(2 * np.pi * np.arange(n) / 252)
-            + np.random.randn(n) * 4,
+            "tmax_f": 65 + 20 * np.sin(2 * np.pi * np.arange(n) / 252) + np.random.randn(n) * 5,
+            "tmin_f": 45 + 18 * np.sin(2 * np.pi * np.arange(n) / 252) + np.random.randn(n) * 4,
             "prcp_in": np.abs(np.random.randn(n) * 0.08),
             "wheat_close": 350 + np.cumsum(np.random.randn(n) * 2),
             "crude_close": 80 + np.cumsum(np.random.randn(n) * 1),
@@ -178,9 +172,7 @@ class TestSchemas:
             validate,
         )
 
-        dup_df = pd.concat([sample_silver_df, sample_silver_df.iloc[:5]]).reset_index(
-            drop=True
-        )
+        dup_df = pd.concat([sample_silver_df, sample_silver_df.iloc[:5]]).reset_index(drop=True)
         with pytest.raises(DataContractError):
             validate(dup_df, SilverSchema, layer="test_dupe_dates")
 
@@ -237,9 +229,7 @@ class TestFeatureEngineering:
             "volume",
         }
         feature_cols = [c for c in sample_gold_df.columns if c not in exclude]
-        assert (
-            len(feature_cols) >= 40
-        ), f"Only {len(feature_cols)} features — expected 40+"
+        assert len(feature_cols) >= 40, f"Only {len(feature_cols)} features — expected 40+"
 
     def test_no_lookahead_bias_in_features(self, sample_gold_df):
         """

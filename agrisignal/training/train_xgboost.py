@@ -78,9 +78,7 @@ def compute_metrics(y_true: np.ndarray, y_pred: np.ndarray) -> dict[str, float]:
         "mae": float(mean_absolute_error(y_true, y_pred)),
         "rmse": float(np.sqrt(mean_squared_error(y_true, y_pred))),
         "r2": float(r2_score(y_true, y_pred)),
-        "da": float(
-            np.mean(np.sign(y_true) == np.sign(y_pred))
-        ),  # Directional accuracy
+        "da": float(np.mean(np.sign(y_true) == np.sign(y_pred))),  # Directional accuracy
         "corr": float(np.corrcoef(y_true, y_pred)[0, 1]),
     }
 
@@ -167,11 +165,7 @@ class XGBoostTrainer:
 
             for fold_i, (tr_idx, val_idx) in enumerate(wfcv.split(X_train)):
                 fold_model = xgb.XGBRegressor(
-                    **{
-                        k: v
-                        for k, v in self.m_cfg["params"].items()
-                        if k != "eval_metric"
-                    },
+                    **{k: v for k, v in self.m_cfg["params"].items() if k != "eval_metric"},
                     verbosity=0,
                 )
                 fold_model.fit(
@@ -202,9 +196,7 @@ class XGBoostTrainer:
             )
 
             # ── Final model on full training set ──────────────────
-            params = {
-                k: v for k, v in self.m_cfg["params"].items() if k != "eval_metric"
-            }
+            params = {k: v for k, v in self.m_cfg["params"].items() if k != "eval_metric"}
             final_model = xgb.XGBRegressor(**params, verbosity=0)
             final_model.fit(
                 X_train,

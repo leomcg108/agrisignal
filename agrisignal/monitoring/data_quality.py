@@ -194,7 +194,5 @@ def run_quality_checks(
         log.warning(f"Feature drift: {drift_issues}")
 
     n_passed = sum(1 for v in report.values() if v.get("passed"))
-    log.info(
-        f"Data quality: {n_passed}/{len(report)} checks passed | overall={all_passed}"
-    )
+    log.info(f"Data quality: {n_passed}/{len(report)} checks passed | overall={all_passed}")
     return all_passed, report

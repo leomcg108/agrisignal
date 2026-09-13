@@ -66,9 +66,7 @@ class NOAAWeatherIngester:
     # ── Core fetch ────────────────────────────────────────────────
 
     @retry(max_attempts=3, exceptions=(requests.RequestException, ValueError))
-    def _fetch_period(
-        self, station_id: str, start_date: date, end_date: date
-    ) -> list[dict]:
+    def _fetch_period(self, station_id: str, start_date: date, end_date: date) -> list[dict]:
         """
         Ingest weather data for a date range, fetching in 6-month chunks.
 
@@ -118,9 +116,7 @@ class NOAAWeatherIngester:
 
         return results
 
-    def _generate_6month_periods(
-        self, start_date: date, end_date: date
-    ) -> list[tuple[date, date]]:
+    def _generate_6month_periods(self, start_date: date, end_date: date) -> list[tuple[date, date]]:
         """
         Generate list of 6-month periods between start and end dates.
         Periods are aligned to calendar half-years:
@@ -194,9 +190,7 @@ class NOAAWeatherIngester:
 
         periods = self._generate_6month_periods(start_date, end_date)
 
-        log.info(
-            f"Generated {len(periods)} six-month periods across {len(stations)} stations"
-        )
+        log.info(f"Generated {len(periods)} six-month periods across {len(stations)} stations")
 
         for region, station_id in stations.items():
             for period_start, period_end in periods:
@@ -211,9 +205,7 @@ class NOAAWeatherIngester:
                     continue
 
                 # Fetch from NOAA API
-                log.info(
-                    f"Fetching {region} ({station_id}) {period_start} to {period_end}"
-                )
+                log.info(f"Fetching {region} ({station_id}) {period_start} to {period_end}")
                 records = self._fetch_period(station_id, period_start, period_end)
 
                 if not records:
@@ -266,12 +258,9 @@ class NOAAWeatherIngester:
 
         if not frames:
             raise RuntimeError(
-                "No weather data found in bronze layer. "
-                "Run ingest_date_range() first."
+                "No weather data found in bronze layer. " "Run ingest_date_range() first."
             )
 
         combined = pd.concat(frames, ignore_index=True)
-        log.info(
-            f"Bronze weather: {len(combined):,} rows across {len(frames)} stations"
-        )
+        log.info(f"Bronze weather: {len(combined):,} rows across {len(frames)} stations")
         return combined

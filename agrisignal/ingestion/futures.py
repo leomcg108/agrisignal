@@ -58,9 +58,7 @@ class FuturesIngester:
             df = yf.download(
                 ticker,
                 start=start.isoformat(),
-                end=(
-                    end + timedelta(days=1)
-                ).isoformat(),  # end is exclusive in yfinance
+                end=(end + timedelta(days=1)).isoformat(),  # end is exclusive in yfinance
                 progress=False,
                 auto_adjust=True,
             )
@@ -118,9 +116,7 @@ class FuturesIngester:
                 if days_stale <= 1:
                     log.info(f"Skipping {label} (partition {latest} is current)")
                     continue
-                log.info(
-                    f"Refreshing {label} (latest partition: {latest}, {days_stale}d stale)"
-                )
+                log.info(f"Refreshing {label} (latest partition: {latest}, {days_stale}d stale)")
 
             df = self._download_ticker(ticker, label, start_date, end_date)
             if df.empty:
