@@ -26,6 +26,7 @@
 - [Testing](#testing)
 - [Configuration](#configuration)
 - [Docker Deployment](#docker-deployment)
+- [Cloud Run Deployment](#cloud-run-deployment)
 - [Design Decisions](#design-decisions)
 - [Roadmap](#roadmap)
 
@@ -605,6 +606,22 @@ docker-compose --profile monitoring up -d
 
 ---
 
+## Cloud Run Deployment
+
+AgriSignal is deployed on Google Cloud Run from a single image: the public API as a Cloud Run service, the daily pipeline as a Cloud Run job triggered by Cloud Scheduler, and a private MLflow UI. A Cloud Storage bucket, mounted at `/app/data`, holds the medallion layers, models and MLflow runs.
+
+Every training registers a new MLflow model version (alias `champion` = the served model), logs the gold dataset's content digest as the training input, and records the git commit. The API's `/model/metadata` reports which run, model version and dataset digest it is serving.
+
+```powershell
+.\scripts\gcp_setup.ps1   -ProjectId <project-id>   # one-off: bucket, secrets, service accounts
+.\scripts\deploy.ps1      -ProjectId <project-id>   # build with Cloud Build, deploy everything
+.\scripts\run_pipeline.ps1 -ProjectId <project-id> -SkipIngestion -ForceTrain
+```
+
+See [docs/deploy-gcp.md](docs/deploy-gcp.md) for the architecture, versioning details and operations.
+
+---
+
 ## Design Decisions
 
 ### Why XGBoost over Deep Learning?
@@ -641,7 +658,7 @@ Financial time series violate the i.i.d. assumption that K-fold relies on. Train
 ### Phase 2 Enhancements
 
 - [ ] **USDA NASS integration** — Weekly crop progress reports (Good+Excellent %) and WASDE monthly report as features
-- [ ] **Rolling model retraining** — Automatic Monday retraining with model registry versioning in MLflow
+- [x] **Rolling model retraining** — Automatic Monday retraining with model registry versioning in MLflow
 - [ ] **Alerting** — Prometheus Alert Manager rules for quality failures, row count drops, and API error rate
 - [ ] **Shadow mode** — Log predictions without serving them; compare model versions offline before promotion
 - [ ] **Confidence intervals** — XGBoost quantile regression for prediction intervals

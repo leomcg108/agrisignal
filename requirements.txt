@@ -3,7 +3,7 @@
 # ─────────────────────────────────────────────────
 
 # Core data
-pandas>=2.1.0
+pandas>=2.1.0,<3         # 3.x breaks silver merge_asof (datetime ns vs us keys)
 numpy>=1.26.0
 pyarrow>=14.0.0          # Parquet read/write
 
@@ -22,7 +22,8 @@ shap>=0.43.0
 joblib>=1.3.0
 
 # Experiment tracking
-mlflow>=2.10.0
+# Pinned: 3.x refuses the file store unless MLFLOW_ALLOW_FILE_STORE=true (set in the Dockerfile)
+mlflow==3.16.1
 
 # Orchestration
 prefect>=2.14.0

@@ -1,0 +1,31 @@
+# Files NOT uploaded to Cloud Build by `gcloud builds submit` (scripts/deploy.ps1).
+# The Docker build has its own filter (.dockerignore); this keeps the upload
+# small and keeps secrets and local environments off Google Cloud Storage.
+
+.gcloudignore
+.git
+.github
+.agrisignal
+.conda
+.venv
+venv
+.vscode
+*.code-workspace
+*.egg-info
+
+**/__pycache__
+**/*.py[cod]
+.pytest_cache
+.ruff_cache
+.coverage
+coverage.xml
+test-results.xml
+
+data
+mlruns
+*.parquet
+test_mlflow.db
+
+.env
+.env.*
+configs/config.yaml

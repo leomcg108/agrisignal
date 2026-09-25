@@ -53,11 +53,19 @@ USER agrisignal
 # Verify app is importable
 RUN python -c "from agrisignal.utils import load_config; print('Import OK')"
 
+# Commit the image was built from; recorded on every MLflow run
+ARG GIT_SHA=""
+# MLflow 3.x refuses the file-based tracking store unless explicitly allowed;
+# on Cloud Run the store lives in the GCS bucket mounted at /app/data
+ENV AGRISIGNAL_GIT_SHA=${GIT_SHA} \
+    MLFLOW_ALLOW_FILE_STORE=true \
+    PYTHONUNBUFFERED=1
+
 HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
-    CMD curl -f http://localhost:8000/health || exit 1
+    CMD curl -f http://localhost:${PORT:-8000}/health || exit 1
 
 EXPOSE 8000
 
-# Default: run the API server
-CMD ["python", "-m", "uvicorn", "agrisignal.serving.api:app", \
-     "--host", "0.0.0.0", "--port", "8000", "--workers", "2"]
+# Default: run the API server. Cloud Run sets $PORT; 8000 elsewhere.
+# One worker: each worker loads its own copy of the model and gold matrix.
+CMD ["sh", "-c", "exec python -m uvicorn agrisignal.serving.api:app --host 0.0.0.0 --port ${PORT:-8000} --workers 1"]

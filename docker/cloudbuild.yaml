@@ -1,0 +1,21 @@
+# Cloud Build config used by scripts/deploy.ps1.
+# Builds docker/Dockerfile from the repo root and pushes to Artifact Registry.
+#   _IMAGE    full image reference, tagged with the git commit
+#   _GIT_SHA  commit baked into the image and recorded on every MLflow run
+
+steps:
+  - name: gcr.io/cloud-builders/docker
+    args:
+      - build
+      - -f
+      - docker/Dockerfile
+      - --build-arg
+      - GIT_SHA=${_GIT_SHA}
+      - -t
+      - ${_IMAGE}
+      - .
+
+images:
+  - ${_IMAGE}
+
+timeout: 1800s
