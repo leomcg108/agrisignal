@@ -36,7 +36,7 @@ class NOAAWeatherIngester:
       date         : object  (YYYY-MM-DD)
       station      : str
       datatype     : str     (TMAX | TMIN | PRCP | SNOW)
-      value        : float   (raw NOAA units — tenths of °C or mm)
+      value        : float   (NOAA "standard" units — °F, or inches for PRCP/SNOW)
       attributes   : str     (quality flag, source flag, etc.)
       _ingest_date : str     (partition key)
       _ingest_ts   : str     (UTC timestamp of this ingestion run)

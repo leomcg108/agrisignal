@@ -304,7 +304,7 @@ curl -X POST http://localhost:8000/predict
           |  5 Corn Belt stations, 6-month NOAA windows, rate-limited   |
 07:00:15  Both ingestion tasks complete
 07:00:16  build_silver()
-          |  Pivot long→wide, unit conversions (tenths→°F/inches)       |
+          |  Pivot long→wide; NOAA standard units (°F/inches) kept      |
           |  Aggregate 5 stations → Corn Belt average                   |
           |  merge_asof(futures, weather, tolerance=3d)                 |
           |  Pandera SilverSchema validation                            |

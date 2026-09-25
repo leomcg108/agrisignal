@@ -208,6 +208,46 @@ class TestTransforms:
         sign_match = (np.sign(df["returns_1d"]) == np.sign(df["log_return_1d"])).all()
         assert sign_match
 
+    def test_weather_kept_in_noaa_standard_units(self, tmp_path):
+        """
+        Ingestion requests NOAA "standard" units (°F, inches), so silver must
+        not rescale them. Regression: they were once treated as tenths of °C,
+        turning an 86°F day into 47.5°F and zeroing every GDD feature.
+        """
+        import yaml
+
+        from agrisignal.transforms.silver import SilverTransform
+
+        cfg_path = tmp_path / "config.yaml"
+        cfg_path.write_text(
+            yaml.dump(
+                {
+                    "storage": {
+                        "bronze": str(tmp_path / "bronze"),
+                        "silver": str(tmp_path / "silver"),
+                    },
+                    "transforms": {"max_null_rate": 0.05},
+                }
+            )
+        )
+        # Two stations on the same day, NOAA long format
+        raw = pd.DataFrame(
+            {
+                "date": ["2025-07-15"] * 8,
+                "region": ["station_a"] * 4 + ["station_b"] * 4,
+                "datatype": ["TMAX", "TMIN", "PRCP", "SNOW"] * 2,
+                "value": [86.0, 66.0, 0.5, 1.0, 90.0, 70.0, 1.5, 0.0],
+            }
+        )
+
+        out = SilverTransform(config_path=str(cfg_path))._clean_weather(raw).iloc[0]
+
+        # Corn Belt value = station average, in the units NOAA returned
+        assert out["tmax_f"] == pytest.approx(88.0)
+        assert out["tmin_f"] == pytest.approx(68.0)
+        assert out["prcp_in"] == pytest.approx(1.0)
+        assert out["snow_mm"] == pytest.approx(12.7)  # 0.5 in average
+
 
 # ═════════════════════════════════════════════════════════════════
 # Feature Engineering Tests

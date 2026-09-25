@@ -45,8 +45,8 @@ class SilverTransform:
         """
         Pivot NOAA long-format data to wide, convert units, aggregate stations.
 
-        NOAA delivers:
-          date | datatype | value (in tenths of °C or tenths of mm)
+        NOAA delivers (ingestion requests "standard" units):
+          date | datatype | value (°F for TMAX/TMIN, inches for PRCP/SNOW)
 
         We produce (Corn Belt daily average):
           date | tmax_f | tmin_f | prcp_in | snow_mm
@@ -65,14 +65,15 @@ class SilverTransform:
         ).reset_index()
         pivoted.columns.name = None
 
-        # Unit conversions (NOAA uses tenths of degrees C / tenths of mm)
+        # Units: NOAA already returns °F and inches because ingestion requests
+        # units="standard", so only snowfall needs converting (to mm).
         if "TMAX" in pivoted.columns:
-            pivoted["tmax_f"] = (pivoted["TMAX"] / 10) * 9 / 5 + 32
-            pivoted["tmin_f"] = (pivoted["TMIN"] / 10) * 9 / 5 + 32
+            pivoted["tmax_f"] = pivoted["TMAX"]
+            pivoted["tmin_f"] = pivoted["TMIN"]
         if "PRCP" in pivoted.columns:
-            pivoted["prcp_in"] = pivoted["PRCP"] / 10 / 25.4  # tenths-mm → inches
+            pivoted["prcp_in"] = pivoted["PRCP"]
         if "SNOW" in pivoted.columns:
-            pivoted["snow_mm"] = pivoted["SNOW"] / 10
+            pivoted["snow_mm"] = pivoted["SNOW"] * 25.4  # inches → mm
 
         # Average across Corn Belt stations for each day
         weather_cols = ["tmax_f", "tmin_f", "prcp_in", "snow_mm"]
