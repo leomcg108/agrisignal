@@ -250,6 +250,62 @@ class TestTransforms:
 
 
 # ═════════════════════════════════════════════════════════════════
+# Ingestion Tests
+# ═════════════════════════════════════════════════════════════════
+
+
+class TestIngestion:
+
+    def test_weather_refetches_current_half_year(self, tmp_path, monkeypatch):
+        """
+        Closed half-years already ingested are skipped, but the half-year
+        containing today is re-fetched every run. Regression: it was skipped
+        once its partition existed, freezing weather at the first ingestion.
+        """
+        import yaml
+
+        from agrisignal.ingestion.weather import NOAAWeatherIngester
+
+        cfg_path = tmp_path / "config.yaml"
+        cfg_path.write_text(
+            yaml.dump(
+                {
+                    "pipeline": {"lookback_years": 2},
+                    "storage": {"bronze": str(tmp_path / "bronze")},
+                    "sources": {
+                        "weather": {
+                            "Token": "test",
+                            "stations": {"des_moines_ia": "USW00014933"},
+                            "rate_limit_sleep_s": 0,
+                        }
+                    },
+                }
+            )
+        )
+        ingester = NOAAWeatherIngester(config_path=str(cfg_path))
+
+        today = date.today()
+        start = date(today.year - 2, 1, 1)
+        periods = ingester._generate_6month_periods(start, today)
+        record = {"date": "2024-01-01T00:00:00", "datatype": "TMAX", "value": 50.0}
+
+        # Every half-year has already been ingested once
+        for period_start, _ in periods:
+            ingester.store.write_bronze_partition(
+                pd.DataFrame([record]), source="des_moines_ia", ingest_date=period_start.isoformat()
+            )
+
+        fetched = []
+        monkeypatch.setattr(
+            ingester, "_fetch_period", lambda station, s, e: fetched.append(s) or [record]
+        )
+        ingester.ingest_date_range(start_date=start, end_date=today)
+
+        assert periods[-1][0] in fetched  # current half-year: re-fetched
+        assert periods[0][0] not in fetched  # closed two years ago: skipped
+
+
+# ═════════════════════════════════════════════════════════════════
 # Feature Engineering Tests
 # ═════════════════════════════════════════════════════════════════
 

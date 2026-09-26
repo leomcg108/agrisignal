@@ -9,7 +9,9 @@ for 5 US Corn Belt stations and writes partitioned bronze Parquet files.
   - Raw fidelity: zero transformation; data written exactly as received
   - Audit metadata: _ingest_ts, _source_url appended to every row
   - Rate-limit aware: respects NOAA's 5 req/sec limit
-  - Incremental: only fetches partitions not already present
+  - Incremental: fetches missing partitions, and re-fetches the current
+    half-year (plus any that ended within REFRESH_WINDOW_DAYS) so new days
+    and NOAA's late corrections are picked up
 
 Free token: https://www.ncdc.noaa.gov/cdo-web/token
 """
@@ -43,6 +45,10 @@ class NOAAWeatherIngester:
     """
 
     BASE_URL = "https://www.ncdc.noaa.gov/cdo-web/api/v2/data"
+
+    # A half-year partition is re-fetched until this many days after it ends,
+    # because NOAA publishes recent observations late and revises them.
+    REFRESH_WINDOW_DAYS = 30
 
     def __init__(self, config_path: str | None = None):
         self.cfg = load_config(config_path)
@@ -196,11 +202,13 @@ class NOAAWeatherIngester:
             for period_start, period_end in periods:
                 partition_key = period_start.strftime("%Y-%m-%d")
 
-                # Idempotency check — skip if already ingested
+                # Idempotency check — skip closed half-years already ingested.
+                # The current one is still filling up, so it is always re-fetched.
                 existing = self.store.list_bronze_partitions(region)
 
                 partition_exists = partition_key in existing
-                if partition_exists and not force_refresh:
+                still_updating = period_end >= today - timedelta(days=self.REFRESH_WINDOW_DAYS)
+                if partition_exists and not force_refresh and not still_updating:
                     log.info(f"Skipping {region}/{partition_key} (already ingested)")
                     continue
 
