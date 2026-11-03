@@ -17,6 +17,12 @@ data/models/
 !.env.example
 configs/config.yaml
 
+# Terraform: state lives in the GCS backend; .terraform.lock.hcl is committed
+.terraform/
+*.tfstate
+*.tfstate.*
+*.tfplan
+
 # MLflow local runs
 mlruns/
 test_mlflow.db

@@ -5,8 +5,9 @@
 
 .DESCRIPTION
     The API loads the model and gold features once at startup, so after a
-    run it is moved to a new revision to pick them up. The scheduled daily
-    run does not do this; its instances refresh when they next cold-start.
+    run it is moved to a new revision to pick them up, by setting a label
+    that Terraform ignores (infra/run.tf). The scheduled daily run does not
+    do this; its instances refresh when they next cold-start.
 
 .EXAMPLE
     # First run after deploying: train on the data uploaded by gcp_setup.ps1
@@ -38,7 +39,7 @@ Invoke-Gcloud @execute
 
 Write-Step "Restarting $ApiService on a new revision to load the new model"
 Invoke-Gcloud run services update $ApiService --region $Region --project $ProjectId --quiet `
-    --update-env-vars "MODEL_REFRESHED_AT=$(Get-Date -Format yyyyMMddHHmmss)"
+    --update-labels "model-refreshed-at=$(Get-Date -Format yyyyMMddHHmmss)"
 
 $ApiUrl = Get-GcloudValue run services describe $ApiService --region $Region --project $ProjectId --format 'value(status.url)'
 Write-Host ''

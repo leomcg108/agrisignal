@@ -608,17 +608,17 @@ docker-compose --profile monitoring up -d
 
 ## Cloud Run Deployment
 
-AgriSignal is deployed on Google Cloud Run from a single image: the public API as a Cloud Run service, the daily pipeline as a Cloud Run job triggered by Cloud Scheduler, and a private MLflow UI. A Cloud Storage bucket, mounted at `/app/data`, holds the medallion layers, models and MLflow runs.
+AgriSignal is deployed on Google Cloud Run from a single image: the public API as a Cloud Run service, the daily pipeline as a Cloud Run job triggered by Cloud Scheduler, and a private MLflow UI. A Cloud Storage bucket, mounted at `/app/data`, holds the medallion layers, models and MLflow runs. Terraform (`infra/`) provisions and configures all of it.
 
 Every training registers a new MLflow model version (alias `champion` = the served model), logs the gold dataset's content digest as the training input, and records the git commit. The API's `/model/metadata` reports which run, model version and dataset digest it is serving.
 
 ```powershell
-.\scripts\gcp_setup.ps1   -ProjectId <project-id>   # one-off: bucket, secrets, service accounts
-.\scripts\deploy.ps1      -ProjectId <project-id>   # build with Cloud Build, deploy everything
+.\scripts\gcp_setup.ps1   -ProjectId <project-id>   # one-off: Terraform state, repository, bucket, secret
+.\scripts\deploy.ps1      -ProjectId <project-id>   # build with Cloud Build, then terraform apply
 .\scripts\run_pipeline.ps1 -ProjectId <project-id> -SkipIngestion -ForceTrain
 ```
 
-See [docs/deploy-gcp.md](docs/deploy-gcp.md) for the architecture, versioning details and operations.
+See [docs/deploy-gcp.md](docs/deploy-gcp.md) for the architecture, Terraform layout, versioning details and operations.
 
 ---
 

@@ -5,6 +5,7 @@
 .gcloudignore
 .git
 .github
+infra
 .agrisignal
 .conda
 .venv

@@ -55,6 +55,28 @@ jobs:
           name: test-results
           path: test-results.xml
 
+  terraform:
+    name: Terraform fmt & validate
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: infra
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "1.16.6"
+
+      - name: Format check
+        run: terraform fmt -check -recursive
+
+      # -backend=false: no cloud credentials or state needed to validate
+      - name: Validate
+        run: |
+          terraform init -backend=false -input=false
+          terraform validate
+
   docker:
     name: Docker Build
     runs-on: ubuntu-latest

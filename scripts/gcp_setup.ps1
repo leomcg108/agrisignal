@@ -1,19 +1,27 @@
 <#
 .SYNOPSIS
-    One-off Google Cloud setup for AgriSignal: APIs, image repository, data
-    bucket, service accounts, config secret, and an initial copy of data/.
+    One-off Google Cloud setup for AgriSignal: the Terraform state bucket, the
+    resources needed before the first image build, the config secret's
+    contents, and an initial copy of data/.
 
 .DESCRIPTION
-    Safe to re-run: resources that already exist are left alone. Re-running
+    Terraform (infra/) owns the cloud resources. This script creates what
+    Terraform itself needs (a state bucket and two APIs), then applies only the
+    image repository, data bucket, config secret and Cloud Build grants, since
+    the Cloud Run services cannot be created until deploy.ps1 has built an
+    image. deploy.ps1 applies everything else.
+
+    Safe to re-run: Terraform leaves unchanged resources alone. Re-running
     uploads configs/config.yaml as a new secret version, so use it after
-    changing the config too. Run deploy.ps1 afterwards.
+    changing the config too.
 
 .EXAMPLE
     .\scripts\gcp_setup.ps1 -ProjectId my-project-id
 #>
 param(
     [Parameter(Mandatory = $true)] [string]$ProjectId,
-    [string]$Region = 'europe-west2'
+    [string]$Region = 'europe-west2',
+    [switch]$AutoApprove
 )
 
 $ErrorActionPreference = 'Stop'
@@ -24,87 +32,53 @@ if (-not (Test-Path configs/config.yaml)) {
     throw 'configs/config.yaml not found. Copy configs/config.example.yaml and add your NOAA token first.'
 }
 
-Write-Step "Project $ProjectId"
-Invoke-Gcloud config set project $ProjectId
-$ProjectNumber = Get-GcloudValue projects describe $ProjectId --format 'value(projectNumber)'
+Write-Step "APIs Terraform needs before it can run (project $ProjectId)"
+Invoke-Gcloud services enable --project $ProjectId `
+    cloudresourcemanager.googleapis.com `
+    serviceusage.googleapis.com `
+    storage.googleapis.com
 
-Write-Step 'Enabling APIs (a minute or two the first time)'
-Invoke-Gcloud services enable `
-    run.googleapis.com `
-    artifactregistry.googleapis.com `
-    cloudbuild.googleapis.com `
-    secretmanager.googleapis.com `
-    cloudscheduler.googleapis.com `
-    storage.googleapis.com `
-    iam.googleapis.com `
-    compute.googleapis.com
-
-Write-Step "Artifact Registry repository '$RepoName'"
-if (-not (Test-Gcloud artifacts repositories describe $RepoName --location $Region)) {
-    Invoke-Gcloud artifacts repositories create $RepoName `
-        --repository-format docker --location $Region --description 'AgriSignal images'
-}
-
-Write-Step "Data bucket gs://$Bucket"
-if (-not (Test-Gcloud storage buckets describe "gs://$Bucket")) {
-    Invoke-Gcloud storage buckets create "gs://$Bucket" `
+Write-Step "Terraform state bucket gs://$StateBucket"
+if (-not (Test-Gcloud storage buckets describe "gs://$StateBucket" --project $ProjectId)) {
+    Invoke-Gcloud storage buckets create "gs://$StateBucket" --project $ProjectId `
         --location $Region --uniform-bucket-level-access --public-access-prevention
 }
-# Every overwrite of a dataset or model file keeps the previous version recoverable
-Invoke-Gcloud storage buckets update "gs://$Bucket" --versioning
+# Every state change keeps the previous state recoverable
+Invoke-Gcloud storage buckets update "gs://$StateBucket" --project $ProjectId --versioning
 
-Write-Step 'Service accounts'
-$accounts = @(
-    @{ Name = 'agrisignal-run';       Display = 'AgriSignal API, pipeline job and MLflow UI' },
-    @{ Name = 'agrisignal-scheduler'; Display = 'Triggers the daily AgriSignal pipeline job' }
-)
-foreach ($sa in $accounts) {
-    if (-not (Test-Gcloud iam service-accounts describe "$($sa.Name)@$ProjectId.iam.gserviceaccount.com")) {
-        Invoke-Gcloud iam service-accounts create $sa.Name --display-name $sa.Display
-    }
-}
+Write-Step 'Terraform init'
+Initialize-Terraform
 
-Write-Step 'Bucket read/write for the runtime service account'
-Invoke-Gcloud storage buckets add-iam-policy-binding "gs://$Bucket" `
-    --member "serviceAccount:$RunSa" --role roles/storage.objectUser --format none
+Write-Step 'Terraform: image repository, data bucket, config secret, Cloud Build grants'
+# -target is deliberate: the services and job need an image, which needs this
+# repository first. Their image is not known yet, so pass whatever is deployed
+# (a placeholder on a new project; the targeted resources do not use it).
+$Deployed = "${ImageBase}:not-yet-built"
+if (Test-Gcloud run services describe $ApiService --region $Region --project $ProjectId) {
+    $Deployed = Get-GcloudValue run services describe $ApiService --region $Region --project $ProjectId `
+        --format 'value(spec.template.spec.containers[0].image)'
+}
+$apply = @('apply', "-var=project_id=$ProjectId", "-var=region=$Region", "-var=image=$Deployed",
+    '-target=google_artifact_registry_repository.images',
+    '-target=google_storage_bucket.data',
+    '-target=google_secret_manager_secret.config',
+    '-target=google_project_iam_member.build')
+if ($AutoApprove) { $apply += '-auto-approve' }
+Invoke-Terraform @apply
 
-Write-Step "Config secret '$ConfigSecret' from configs/config.yaml"
-if (Test-Gcloud secrets describe $ConfigSecret) {
-    Invoke-Gcloud secrets versions add $ConfigSecret --data-file configs/config.yaml
-} else {
-    Invoke-Gcloud secrets create $ConfigSecret --data-file configs/config.yaml --replication-policy automatic
-}
-Invoke-Gcloud secrets add-iam-policy-binding $ConfigSecret `
-    --member "serviceAccount:$RunSa" --role roles/secretmanager.secretAccessor --format none
-
-Write-Step 'Cloud Build permissions'
-# New projects run builds as the Compute Engine default service account. It
-# usually has Editor already; these grants cover projects where it does not.
-$BuildSa = "$ProjectNumber-compute@developer.gserviceaccount.com"
-$found = $false
-foreach ($attempt in 1..6) {
-    if (Test-Gcloud iam service-accounts describe $BuildSa) { $found = $true; break }
-    Write-Host "Waiting for $BuildSa to be created..."
-    Start-Sleep -Seconds 10
-}
-if ($found) {
-    foreach ($role in 'roles/artifactregistry.writer', 'roles/logging.logWriter', 'roles/storage.objectViewer') {
-        Invoke-Gcloud projects add-iam-policy-binding $ProjectId `
-            --member "serviceAccount:$BuildSa" --role $role --condition None --format none
-    }
-} else {
-    Write-Warning "$BuildSa not found; skipping build grants. If the build fails on permissions, re-run this script."
-}
+Write-Step "Config secret '$ConfigSecret': uploading configs/config.yaml as a new version"
+# Uploaded here rather than by Terraform so the NOAA token stays out of Terraform state
+Invoke-Gcloud secrets versions add $ConfigSecret --project $ProjectId --data-file configs/config.yaml
 
 Write-Step 'Seeding the bucket with local data/ (first run only)'
-if (Test-Gcloud storage objects describe "gs://$Bucket/gold/gold_features.parquet") {
+if (Test-Gcloud storage objects describe "gs://$Bucket/gold/gold_features.parquet" --project $ProjectId) {
     Write-Host 'Bucket already has gold data; not uploading.'
 } elseif (Test-Path data/gold/gold_features.parquet) {
     # Local mlruns/ is deliberately not uploaded: its runs record C:\ paths,
     # so the cloud MLflow history starts fresh.
     foreach ($layer in 'bronze', 'silver', 'gold', 'models') {
         if (Test-Path "data/$layer") {
-            Invoke-Gcloud storage cp --recursive "data/$layer" "gs://$Bucket/"
+            Invoke-Gcloud storage cp --project $ProjectId --recursive "data/$layer" "gs://$Bucket/"
         }
     }
 } else {
