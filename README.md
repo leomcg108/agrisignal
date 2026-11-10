@@ -38,13 +38,13 @@ AgriSignal is a **production-grade ML data pipeline** that predicts short-term c
 
 - **NOAA GHCN-Daily** weather data from 5 Corn Belt stations (Iowa, Illinois, Indiana, Nebraska, Ohio)
 - **Corn futures price data** (ZC=F) and correlated assets (wheat, crude oil, USD index) via yfinance
-- **82 engineered features** spanning technical indicators, agronomic variables, and seasonal patterns
+- **80 engineered features** spanning technical indicators, agronomic variables, and seasonal patterns
 
 The system is designed as a data engineering showcase demonstrating medallion architecture, schema contracts, walk-forward cross-validation, and production observability rather than black-box model complexity. A simple, well-engineered XGBoost pipeline with a clear data lineage story is more valuable and interpretable than a complex deep learning model without engineering rigour.
 
 ### Why Corn Futures?
 
-Corn is the world's most-produced grain crop and a benchmark commodity for global food markets. Its price is driven by a measurable, predictable factor set:
+Corn is the world's most-produced grain crop and a benchmark commodity for global food markets. Its price is driven by a measurable factor set:
 
 - **Weather** during the growing season (April–November) in the US Corn Belt
 - **Technical momentum** in futures markets
@@ -52,6 +52,12 @@ Corn is the world's most-produced grain crop and a benchmark commodity for globa
 - **Cross-asset signals** from crude oil (ethanol demand) and the USD (export competitiveness)
 
 This domain specificity makes it an ideal candidate for feature-rich, interpretable ML: the features have clear real-world meaning, which makes SHAP explanations directly actionable.
+
+### Model Performance
+
+The model does not currently beat chance. On the chronological hold-out for the model served in November 2026 (MLflow model version 12), 5-day directional accuracy is 48%, R² is about 0, and the correlation between predicted and actual returns is −0.03. Walk-forward cross-validation gives 51.5% directional accuracy. These weather and market features show no usable signal for 5-day corn returns.
+
+The walk-forward CV, chronological split and leakage checks described below are there so that this is a fair out-of-sample estimate. The figures for whichever model is being served are in `GET /health` (`test_metrics`, `cv_metrics_mean`) and in MLflow.
 
 ---
 
@@ -96,7 +102,7 @@ Data is stored in Hive-partitioned Parquet files with a strict three-layer progr
 |-------|----------|-------------|--------|
 | **Bronze** | `data/bronze/` | Raw API responses with audit columns (`_ingest_date`, `_ingest_ts`) | Parquet (Snappy), partitioned by `ingest_date=` |
 | **Silver** | `data/silver/` | Cleaned, joined, unit-converted, Pandera-validated | Single Parquet file |
-| **Gold** | `data/gold/` | ML-ready feature matrix (82 features + target) | Single Parquet file |
+| **Gold** | `data/gold/` | ML-ready feature matrix (80 features + target) | Single Parquet file |
 
 ---
 
@@ -110,7 +116,7 @@ Data is stored in Hive-partitioned Parquet files with a strict three-layer progr
 - **Rate limiting** — 0.25s sleep between NOAA requests (stays within 5 req/s limit)
 - **Schema contracts** — Pandera validates every layer; `DataContractError` on violation
 
-### Feature Engineering (82 Features)
+### Feature Engineering (80 Features)
 - **Price/Return**: SMA and EMA (5/10/20/60d), returns at multiple horizons, volume ratio, overnight gap
 - **Technical Indicators**: RSI(14), MACD(12/26/9), Bollinger Bands (%B + bandwidth), ATR(14), OBV
 - **Volatility Regime**: Realised volatility (5/10/20/60d, annualised ×√252), Parkinson volatility, binary vol regime flag
@@ -167,7 +173,7 @@ agrisignal/
 │   │   └── schemas.py             # Pandera schema contracts
 │   │
 │   ├── features/
-│   │   └── engineer.py            # 82-feature Gold layer
+│   │   └── engineer.py            # 80-feature Gold layer
 │   │
 │   ├── training/
 │   │   └── train_xgboost.py       # WalkForwardCV + XGBoostTrainer
@@ -309,7 +315,7 @@ curl -X POST http://localhost:8000/predict
           |  merge_asof(futures, weather, tolerance=3d)                 |
           |  Pandera SilverSchema validation                            |
 07:00:28  build_gold()
-          |  82 features: technical, agronomic, seasonal, cross-asset   |
+          |  80 features: technical, agronomic, seasonal, cross-asset   |
           |  Cyclical encoding, GDD computation, WASDE calendar         |
           |  Target: 5-day forward return (last 5 rows = NaN)           |
           |  Pandera GoldSchema validation                              |
@@ -412,8 +418,8 @@ The **5-day gap** prevents target leakage: since the target is a 5-day forward r
   "model_loaded": true,
   "uptime_s": 3847.1,
   "model_metadata": {
-    "n_features": 82,
-    "test_metrics": {"da": 0.682, "mae": 1.245},
+    "n_features": 80,
+    "test_metrics": {"mae": 2.55, "rmse": 3.25, "r2": -0.0, "da": 0.48, "corr": -0.03},
     "target_horizon_days": 5
   }
 }
@@ -632,7 +638,6 @@ Tabular financial data with ~80 features and ~2,500 training samples is the **ca
 - SHAP values give per-prediction explanations in terms of domain-meaningful features
 - Training takes ~70 seconds (vs. hours for LSTMs on this dataset size)
 - No risk of overfitting to spurious temporal patterns that transformers can pick up
-- Directional Accuracy of 68% is competitive with professional quant benchmarks
 
 ### Why Medallion Architecture over a Database?
 
