@@ -50,6 +50,12 @@ class NOAAWeatherIngester:
     # because NOAA publishes recent observations late and revises them.
     REFRESH_WINDOW_DAYS = 30
 
+    # Connect timeout, separate from the read timeout (sources.weather.timeout_s).
+    # The CDO host resolves to 12 addresses and each one is tried in turn, so an
+    # unreachable NOAA costs 12x this per attempt; at the read timeout's 30s that
+    # was 6 minutes per attempt, which ran the pipeline job into its 1-hour limit.
+    CONNECT_TIMEOUT_S = 5
+
     def __init__(self, config_path: str | None = None):
         self.cfg = load_config(config_path)
         self.src_cfg = self.cfg["sources"]["weather"]
@@ -101,7 +107,7 @@ class NOAAWeatherIngester:
         resp = self.session.get(
             self.BASE_URL,
             params=params,
-            timeout=self.src_cfg["timeout_s"],
+            timeout=(self.CONNECT_TIMEOUT_S, self.src_cfg["timeout_s"]),
         )
         resp.raise_for_status()
         data = resp.json()
