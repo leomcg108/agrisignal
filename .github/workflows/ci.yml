@@ -8,7 +8,6 @@ on:
 
 permissions:
   contents: read
-  packages: write
 
 jobs:
   quality:
@@ -92,9 +91,5 @@ jobs:
           docker run --rm agrisignal:${{ github.sha }} \
             python -c "from agrisignal.utils import load_config; print('OK')"
 
-      - name: Tag and push (main only)
-        if: github.ref == 'refs/heads/main'
-        run: |
-          echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
-          docker tag agrisignal:${{ github.sha }} ghcr.io/${{ github.repository }}:latest
-          docker push ghcr.io/${{ github.repository }}:latest
+      # Not pushed anywhere: Cloud Run images are built by Cloud Build and
+      # stored in Artifact Registry (scripts/deploy.ps1)
