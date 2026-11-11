@@ -4,6 +4,28 @@ resource "google_artifact_registry_repository" "images" {
   format        = "DOCKER"
   description   = "AgriSignal images"
 
+  # Each deploy pushes a ~0.9 GB image. Keep the 5 newest and delete the rest
+  # (a KEEP policy overrides DELETE), so only those 5 can be rolled back to.
+  # The deployed image is always among them: only deploy.ps1 pushes, and it
+  # deploys what it pushes. Cleanup runs in the background about once a day.
+  cleanup_policy_dry_run = false
+
+  cleanup_policies {
+    id     = "keep-5-newest"
+    action = "KEEP"
+    most_recent_versions {
+      keep_count = 5
+    }
+  }
+
+  cleanup_policies {
+    id     = "delete-older"
+    action = "DELETE"
+    condition {
+      tag_state = "ANY"
+    }
+  }
+
   depends_on = [google_project_service.apis]
 }
 
